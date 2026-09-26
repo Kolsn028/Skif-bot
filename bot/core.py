@@ -85,22 +85,8 @@ class SkifBot(commands.Bot):
         for guild in self.guilds:
             try: await refresh_interface(self, guild)
             except Exception as exc: print(f"Interface refresh failed | guild={guild.id}: {exc}")
-        # Auto-provision once per server: only where the rank roles already exist.
-        from .provisioning import provision
         for guild in self.guilds:
-            cfg = await self.db.get_config(guild.id)
-            if cfg.get('server_layout_version') == 10:
-                continue
-            if not all(any(r.name == name for r in guild.roles) for name in ('Овнер', 'Рекрут')):
-                continue
-            try:
-                result = await provision(self, guild, {})
-                issues = [f.value for f in result.fields if f.name == 'Проверь']
-                print(f'Skif layout v10 ready | guild={guild.id} | warnings={issues}')
-            except Exception as exc:
-                import traceback
-                traceback.print_exc()
-                print(f'Skif layout migration incomplete: {type(exc).__name__}: {exc}')
+            await self._auto_provision(guild)
 
         for guild in self.guilds:
             cfg = await self.db.get_config(guild.id)
@@ -110,6 +96,26 @@ class SkifBot(commands.Bot):
                 except Exception as exc:
                     self.backups.errors[guild.id] = str(exc)
                     print(f'Discord backup initial save failed | guild={guild.id}: {exc}')
+
+    async def _auto_provision(self, guild):
+        """Создать роли, каналы и панели без /setup и сохранить их ID в конфиг.
+
+        Пропускает уже настроенные серверы (server_layout_version == 10) и серверы,
+        где боту не хватает прав — provision сам поднимет ValueError, а ручной /setup
+        после выдачи прав достроит структуру, ничего не удаляя.
+        """
+        cfg = await self.db.get_config(guild.id)
+        if cfg.get('server_layout_version') == 10:
+            return
+        from .provisioning import provision
+        try:
+            result = await provision(self, guild, {})
+            issues = [f.value for f in result.fields if f.name == 'Проверь']
+            print(f'Skif layout v10 ready | guild={guild.id} | warnings={issues}')
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            print(f'Skif layout migration incomplete: {type(exc).__name__}: {exc}')
 
     async def sync_guild_commands(self, guild):
         async with self.operation_locks[('commands', guild.id)]:
@@ -136,6 +142,7 @@ class SkifBot(commands.Bot):
 
     async def on_guild_join(self, guild):
         await self.sync_guild_commands(guild)
+        await self._auto_provision(guild)
 
     async def on_member_join(self, member):
         if member.bot:
