@@ -139,7 +139,7 @@ class SkifBot(commands.Bot):
 
     async def on_guild_join(self, guild):
         await self.sync_guild_commands(guild)
-        # # await self._auto_provision(guild)  # Личные дела отключены  # Личные дела отключены
+        await self._auto_provision(guild)
 
     async def on_member_join(self, member):
         if member.bot:
