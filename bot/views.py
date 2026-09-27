@@ -15,8 +15,9 @@ from .forms.vacations import (
     VacationPanelView,
     VacationDecisionView,
 )
-from .forms.cases import (
-    CasePanelView,
+from .progression import (
+    GreenPanelView,
+    WarnPanelView,
 )
 from .forms.activities import (
     ActivityTypeSelect,
@@ -29,4 +30,4 @@ from .forms.shared import (
     _thread_name,
 )
 
-__all__ = ['ApplicationModal', 'ApplicationPanelView', 'RecruiterActionSelect', 'RecruiterActionView', 'VacationModal', 'VacationPanelView', 'VacationDecisionView', 'CasePanelView', 'ActivityTypeSelect', 'ActivityClassifyView', 'RejectActivityModal', 'ActivityReviewView', '_id_from_title', '_thread_name']
+__all__ = ['ApplicationModal', 'ApplicationPanelView', 'RecruiterActionSelect', 'RecruiterActionView', 'VacationModal', 'VacationPanelView', 'VacationDecisionView', 'GreenPanelView', 'WarnPanelView', 'ActivityTypeSelect', 'ActivityClassifyView', 'RejectActivityModal', 'ActivityReviewView', '_id_from_title', '_thread_name']

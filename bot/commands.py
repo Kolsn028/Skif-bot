@@ -2,8 +2,8 @@ from __future__ import annotations
 from datetime import datetime
 import discord
 from discord import app_commands
-from .ui import application_panel_embed,vacation_panel_embed,case_panel_embed,base_embed,activity_type_label,application_banner_file
-from .views import ApplicationPanelView,VacationPanelView,CasePanelView
+from .ui import application_panel_embed,vacation_panel_embed,base_embed,activity_type_label,application_banner_file
+from .views import ApplicationPanelView,VacationPanelView
 
 
 def admin_only():
@@ -102,7 +102,7 @@ def register_commands(bot):
         c=await bot.db.get_config(i.guild.id); lines=[]
         for name,key in [('Ветки заявок','applications_parent_channel_id'),('Лог заявок','applications_log_channel_id'),('Обзвон','interview_channel_id'),('Отпуска','vacation_review_channel_id'),('Статус отпусков','vacation_status_channel_id'),('Лидерборд','leaderboard_channel_id'),('Лог активности','activity_log_channel_id'),('Контроль неактива','inactivity_report_channel_id')]: lines.append(f"**{name}:** {f'<#{c.get(key)}>' if c.get(key) else '—'}")
         for name,key in [('Гость','guest_role_id'),('Рекрут','recruiter_role_id'),('Academy','accepted_role_id'),('main — 3 ранг','main_role_id'),('Овнер','leader_role_id'),('Дэп Овнер','dep_leader_role_id'),('Хай','high_staff_role_id'),('Skif','family_role_id'),('В отпуске','vacation_role_id')]: lines.append(f"**{name}:** {f'<@&{c.get(key)}>' if c.get(key) else '—'}")
-        cat=i.guild.get_channel(c.get('case_category_id') or 0); lines.append(f"**Категория дел:** {cat.name if cat else '—'}"); await i.response.send_message(embed=base_embed("⚙️ Конфигурация",'\n'.join(lines)),ephemeral=True)
+        await i.response.send_message(embed=base_embed("⚙️ Конфигурация",'\n'.join(lines)),ephemeral=True)
 
     @bot.tree.command(name="recruiter_assign", description="Назначить Рекрут: Хай или Дэп Овнер")
     async def recruiter_assign(i: discord.Interaction, member: discord.Member):

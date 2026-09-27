@@ -193,11 +193,6 @@ class RecruiterActionSelect(discord.ui.Select):
                     base_embed(f"Принят • заявка #{app['id']}", f"Кандидат: <@{app['applicant_id']}>\nРанг: **Academy**\nРешение: {interaction.user.display_name}", 0x3BAA72))
         await self.bot.send_or_update_leaderboard(interaction.guild)
 
-        if accepted and applicant and os.getenv("AUTO_CREATE_CASE_ON_ACCEPT", "true").lower() == "true":
-            case_ch = await self.bot.ensure_personal_case(applicant)
-            if case_ch:
-                await interaction.channel.send(f"📁 Личное дело: {case_ch.mention}")
-
         await asyncio.sleep(5)
         if isinstance(interaction.channel, discord.Thread):
             try:

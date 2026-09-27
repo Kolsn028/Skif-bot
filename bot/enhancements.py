@@ -36,8 +36,6 @@ class RejectionModal(SafeModal,title='Причина отказа'):
                 return await i.followup.send(str(exc), ephemeral=True)
             await i.followup.send('Отказ и причина сохранены в истории игрока.',ephemeral=True)
             await i.channel.send(embed=base_embed('❌ По заявке отказ',f"Кандидат: <@{app['applicant_id']}>\nРекрутер: {i.user.mention}\nПричина: {discord.utils.escape_markdown(reason)}",0xD64045),allowed_mentions=discord.AllowedMentions.none())
-            from .profiles import refresh_member
-            await refresh_member(self.bot,i.guild,app['applicant_id'],create=False)
             await self.bot.send_or_update_leaderboard(i.guild)
             if isinstance(i.channel,discord.Thread): await i.channel.edit(archived=True,locked=True)
 
@@ -127,11 +125,10 @@ async def remind_applications(bot,guild):
 async def refresh_interface(bot,guild):
     """Update existing bot panels/cards without running setup or modifying role grants."""
     from .events import EVENTS,event_panel,EventPanelView,EventView,card
-    from .profiles import refresh_member
     from .ui import vacation_panel_embed
     cfg=await bot.db.get_config(guild.id)
-    from .progression import contract_panel_embed,promotion_panel_embed
-    for kind in (*EVENTS,'application','vacation','contract','promotion'):
+    from .progression import contract_panel_embed,promotion_panel_embed,green_panel_embed,warn_panel_embed
+    for kind in (*EVENTS,'application','vacation','contract','promotion','green','warn'):
         cid=cfg.get(f'{kind}_panel_channel_id');mid=cfg.get(f'{kind}_panel_message_id')
         if not cid or not mid: continue
         try:
@@ -144,6 +141,8 @@ async def refresh_interface(bot,guild):
                 kwargs={'view':ApplicationPanelView(bot)}
             if kind=='contract': kwargs={'embed':contract_panel_embed()}
             if kind=='promotion': kwargs={'embed':promotion_panel_embed()}
+            if kind=='green': kwargs={'embed':green_panel_embed()}
+            if kind=='warn': kwargs={'embed':warn_panel_embed()}
             await edit_if_changed(msg,**kwargs,allowed_mentions=discord.AllowedMentions.none())
         except discord.NotFound: continue
     for row in await bot.db._all('SELECT * FROM family_events WHERE guild_id=? AND message_id IS NOT NULL',(guild.id,)):
@@ -156,8 +155,6 @@ async def refresh_interface(bot,guild):
                 for item in view.children: item.disabled=item.custom_id!='skif:event:manage'
             await edit_if_changed(msg,embed=await card(bot.db,row),view=view,allowed_mentions=discord.AllowedMentions.none())
         except discord.NotFound: continue
-    for case in await bot.db._all('SELECT member_id FROM personal_cases WHERE guild_id=?',(guild.id,)):
-        await refresh_member(bot,guild,case['member_id'],create=False)
     from .dashboard import install_hub
     await install_hub(bot,guild)
     print(f'Interface refreshed | guild={guild.id}')

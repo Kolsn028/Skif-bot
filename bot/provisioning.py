@@ -1,12 +1,12 @@
 """Repeatable server setup. Existing configured channels are never deleted."""
 import discord
-from .ui import base_embed, application_panel_embed, vacation_panel_embed, case_panel_embed
-from .views import ApplicationPanelView, VacationPanelView, CasePanelView
+from .ui import base_embed, application_panel_embed, vacation_panel_embed
+from .views import ApplicationPanelView, VacationPanelView
 
 from .roles import ROLE_SPECS, configured_tier_roles, named_role, HIGH_KEYS
 from .ui import application_banner_file
 from .events import EVENTS, EventPanelView, event_panel
-from .progression import ContractPanelView, PromotionPanelView, contract_panel_embed, promotion_panel_embed
+from .progression import ContractPanelView, PromotionPanelView, GreenPanelView, WarnPanelView, contract_panel_embed, promotion_panel_embed, green_panel_embed, warn_panel_embed
 
 async def provision(bot, guild, selected):
     async with bot.operation_locks[('setup', guild.id)]:
@@ -99,7 +99,6 @@ async def provision(bot, guild, selected):
             ('recruitment_category_id', 'SKIF • НАБОР', [guild.default_role], []),
             ('family_category_id', 'SKIF • СОСТАВ', family, []),
             ('management_category_id', 'SKIF • УПРАВЛЕНИЕ', staff, []),
-            ('case_category_id', 'SKIF • ЛИЧНЫЕ ДЕЛА', staff, staff),
         ]
         cats = {}
         for key, name, audience, reviewers in specs:
@@ -156,7 +155,6 @@ async def provision(bot, guild, selected):
         await channel('interview_voice_channel_id', 'Обзвон 1 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
         await channel('interview_voice_2_id', 'Обзвон 2 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
         await channel('interview_voice_3_id', 'Обзвон 3 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
-        await channel('case_panel_channel_id', '📁・личное-дело', 'family_category_id', family)
         await channel('vacation_panel_channel_id', '🌴・заявка-на-отдых', 'family_category_id', family)
         await channel('vacation_review_channel_id', '🗂・рассмотрение-отдыха', 'family_category_id', family, leaders)
         await channel('vacation_status_channel_id', '🗓・кто-в-отдыхе', 'family_category_id', family)
@@ -167,15 +165,18 @@ async def provision(bot, guild, selected):
 
         await channel('contract_panel_channel_id', '🟠・активация-контрактов', 'family_category_id', family, staff)
         await channel('promotion_panel_channel_id', '😎・система-повышения', 'family_category_id', family, staff)
+        await channel('green_panel_channel_id', '🟢・сдача-гринов', 'family_category_id', family, staff)
+        await channel('warn_panel_channel_id', '⚠️・снятие-варнов', 'family_category_id', family, staff)
 
         for kind, (emoji, name, color) in EVENTS.items():
             await channel(f'{kind}_panel_channel_id', f'{emoji}・{name}', 'events_category_id', family)
 
         panels = [('application', application_panel_embed, ApplicationPanelView),
                   ('vacation', vacation_panel_embed, VacationPanelView),
-                  ('case', case_panel_embed, CasePanelView),
                   ('contract', contract_panel_embed, ContractPanelView),
-                  ('promotion', promotion_panel_embed, PromotionPanelView)]
+                  ('promotion', promotion_panel_embed, PromotionPanelView),
+                  ('green', green_panel_embed, GreenPanelView),
+                  ('warn', warn_panel_embed, WarnPanelView)]
         panels += [(kind, lambda k=kind: event_panel(k), EventPanelView) for kind in EVENTS]
         cfg = await bot.db.get_config(guild.id)
         for kind, make_embed, view in panels:
@@ -209,20 +210,6 @@ async def provision(bot, guild, selected):
         await bot.update_inactivity_report(guild)
         if not guild.chunked:
             await guild.chunk(cache=True)
-        # Refresh staff access to existing personal cases without mentioning their owners.
-        for case in cats['case_category_id'].text_channels:
-            topic = case.topic or ''
-            if not topic.startswith('Личное дело • owner='):
-                continue
-            raw_id = topic.partition('owner=')[2]
-            if not raw_id.isdigit():
-                continue
-            owner = guild.get_member(int(raw_id))
-            ow = overwrites(staff, write=True)
-            if owner:
-                ow[owner] = discord.PermissionOverwrite(view_channel=True, send_messages=True,
-                    read_message_history=True, attach_files=True, embed_links=True)
-            await case.edit(overwrites=ow, reason='Skif: доступ руководства к личному делу')
         # Existing open contract threads also need the newly authorized recruiters.
         contract_parent = channels['contract_panel_channel_id']
         for thread in guild.threads:
@@ -248,7 +235,7 @@ async def provision(bot, guild, selected):
                 ow[main] = ch.overwrites_for(novice)
                 await ch.edit(overwrites=ow, reason='Skif: равный доступ Skif и Academy')
         result = base_embed('Сервер готов • Skif', 'Разделы и панели настроены. Повторный запуск обновляет эту структуру.')
-        result.add_field(name='Начало работы', value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'case')), inline=False)
+        result.add_field(name='Начало работы', value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'green', 'warn')), inline=False)
         result.add_field(name='Роли', value='\n'.join(f'{name}: {roles[key].mention}' for key, (name, _) in ROLE_SPECS.items()), inline=False)
         result.add_field(name='Тиры', value='\n'.join((f'tiercheck: {tier_roles["tiercheck"].mention}', *(f'Тир {n}: {tier_roles[n].mention}' for n in (1,2,3)))), inline=False)
         result.add_field(name='Следующий шаг', value='Выдай роли нужным участникам. Чтобы использовать свои роли, повтори `/setup` и выбери их в параметрах. Права каналов, созданных ботом, обновляются автоматически. Права подключённых вручную каналов проверь отдельно.', inline=False)

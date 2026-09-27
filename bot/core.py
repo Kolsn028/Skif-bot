@@ -33,8 +33,8 @@ class SkifBot(commands.Bot):
         self.add_view(TierPanelView(self));self.add_view(TierReviewView(self))
         from .dashboard import ManagementView
         self.add_view(ManagementView(self))
-        from .views import ApplicationPanelView,RecruiterActionView,VacationPanelView,VacationDecisionView,CasePanelView,ActivityClassifyView,ActivityReviewView
-        for view in (ApplicationPanelView(self),RecruiterActionView(self),VacationPanelView(self),VacationDecisionView(self),CasePanelView(self),ActivityClassifyView(self),ActivityReviewView(self)):
+        from .views import ApplicationPanelView,RecruiterActionView,VacationPanelView,VacationDecisionView,ActivityClassifyView,ActivityReviewView
+        for view in (ApplicationPanelView(self),RecruiterActionView(self),VacationPanelView(self),VacationDecisionView(self),ActivityClassifyView(self),ActivityReviewView(self)):
             self.add_view(view)
         from .progression import ContractPanelView, PromotionPanelView, ProgressReviewView
         for view in (ContractPanelView(self), PromotionPanelView(self), ProgressReviewView(self)):
@@ -189,21 +189,6 @@ class SkifBot(commands.Bot):
     async def on_message(self,msg):
         from .enhancements import mark_staff_response
         await mark_staff_response(self, msg)
-        if msg.author.bot or not msg.guild or not msg.attachments: return
-        case=await self.db.get_case_by_channel(msg.guild.id,msg.channel.id)
-        if not case: return
-        if msg.author.id != case['member_id'] and not await self.is_high_staff(msg.author): return
-        urls=[]
-        for a in msg.attachments:
-            ct=(a.content_type or "").lower()
-            if ct.startswith("image/") or ct.startswith("video/") or a.filename.lower().endswith(MEDIA_EXTS): urls.append(a.url)
-        if not urls: return
-        sid=await self.db.create_activity(msg.guild.id,case["member_id"],msg.channel.id,msg.id,urls,self.now_iso())
-        if not sid: return
-        from .views import ActivityClassifyView
-        e=base_embed(f"📎 Активность #{sid}",f"Участник: <@{case['member_id']}>\nОтправил: {msg.author.mention}\nВложений: **{len(urls)}**\n[Открыть исходное сообщение]({msg.jump_url})",0xD5A43A)
-        e.add_field(name="Тип",value="❔ Не выбран",inline=True); e.add_field(name="Баллы",value="—",inline=True); e.add_field(name="Статус",value="🟡 Нужно выбрать тип",inline=False)
-        review=await msg.reply(embed=e,view=ActivityClassifyView(self),mention_author=False); await self.db.update_activity(sid,review_message_id=review.id)
 
     @coalesced_panel
     async def send_or_update_leaderboard(self,guild):

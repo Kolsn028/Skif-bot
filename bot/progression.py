@@ -28,6 +28,18 @@ def promotion_panel_embed():
     return base_embed('😎 Система повышения', RULES, 0xD5AD65)
 
 
+def green_panel_embed():
+    return base_embed('🟢 Сдача гринов',
+        'Нажми **Подать отчёт**, укажи **ник в игре** и приложи скрин с планшета.'
+        'Отчёт попадёт в приватную ветку, проверяет Рекрут и выше.', 0x3BAA72)
+
+
+def warn_panel_embed():
+    return base_embed('⚠️ Снятие варнов',
+        'Нажми **Подать заявку**, укажи **ник в игре** и приложи скриншот сданного контракта или грина.'
+        'Заявка попадёт в приватную ветку, проверяет Рекрут и выше.', 0xF39C12)
+
+
 async def submit(bot, i, kind, details):
     if not isinstance(i.user, discord.Member) or not await bot.is_family_member(i.user):
         return await i.response.send_message('Доступно участникам семьи.', ephemeral=True)
@@ -40,13 +52,14 @@ async def submit(bot, i, kind, details):
         existing = await bot.db.find_open_progress(i.guild_id, i.user.id, kind)
         if existing:
             return await i.followup.send(f"У тебя уже есть открытая ветка: <#{existing['thread_id']}>.", ephemeral=True)
+        kind_names = {'contract': 'контракт', 'promotion': 'повышение', 'green': 'грины', 'warn': 'варны'}
         thread = await private_thread(parent, i.user, configured_roles(i.guild, cfg, STAFF_KEYS),
-                                      f'{"контракт" if kind == "contract" else "повышение"}-{i.user.display_name}')
+                                      f'{kind_names.get(kind, kind)}-{i.user.display_name}')
         try:
             await bot.db.create_progress(i.guild_id, i.user.id, kind, thread.id, details, bot.now_iso())
-            embed = base_embed('🟡 Проверка контракта' if kind == 'contract' else '🟡 Заявка на повышение',
+            embed = base_embed('🟡 Проверка контракта' if kind == 'contract' else ('🟡 Отчёт: сдача гринов' if kind == 'green' else ('🟡 Заявка: снятие варнов' if kind == 'warn' else '🟡 Заявка на повышение')),
                 f'Участник: {i.user.mention}\n{details}\n\n**Прикрепи скриншоты в эту ветку.**\n'
-                + ('Проверяют: Рекрут и выше. ' if kind == 'contract' else 'Повышение до 3 ранга проверяет Рекрут и выше. ') + 'Самостоятельное одобрение запрещено.')
+                + ('Проверяют: Рекрут и выше. ' if kind in ('contract', 'green', 'warn') else 'Повышение до 3 ранга проверяет Рекрут и выше. ') + 'Самостоятельное одобрение запрещено.')
             if kind == 'promotion':
                 embed.add_field(name='Что проверяет руководство', value='10 помощей • 10 разных каптов • 10 дней в семье • обзвон • активность', inline=False)
             await thread.send(embed=embed, view=ProgressReviewView(bot), allowed_mentions=discord.AllowedMentions.none())
@@ -85,6 +98,38 @@ class PromotionModal(SafeModal, title='Повышение • 1 → 3'):
                      f'**В семье с:** {self.since}\n**Обзвон:** {self.interview}\n**Активность:** {self.activity}')
 
 
+class GreenReportModal(SafeModal, title='Сдача гринов • Skif'):
+    nickname = discord.ui.TextInput(label='Ник в игре', max_length=60)
+    def __init__(self, bot):
+        super().__init__(); self.bot = bot
+    async def on_submit(self, i):
+        await submit(self.bot, i, 'green', f'**Ник в игре:** {self.nickname}')
+
+
+class WarnRemovalModal(SafeModal, title='Снятие варнов • Skif'):
+    nickname = discord.ui.TextInput(label='Ник в игре', max_length=60)
+    def __init__(self, bot):
+        super().__init__(); self.bot = bot
+    async def on_submit(self, i):
+        await submit(self.bot, i, 'warn', f'**Ник в игре:** {self.nickname}')
+
+
+class GreenPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None); self.bot = bot
+    @discord.ui.button(label='Подать отчёт', emoji='🟢', style=discord.ButtonStyle.success, custom_id='skif:green:open')
+    async def open(self, i, _):
+        await i.response.send_modal(GreenReportModal(self.bot))
+
+
+class WarnPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None); self.bot = bot
+    @discord.ui.button(label='Подать заявку', emoji='⚠️', style=discord.ButtonStyle.primary, custom_id='skif:warn:open')
+    async def open(self, i, _):
+        await i.response.send_modal(WarnRemovalModal(self.bot))
+
+
 class ContractPanelView(SafeView):
     def __init__(self, bot):
         super().__init__(timeout=None); self.bot = bot
@@ -112,7 +157,7 @@ class DecisionModal(SafeModal, title='Решение по заявке'):
         await i.response.defer(ephemeral=True, thinking=True)
         async with self.bot.operation_locks[('progress_decision', i.guild_id, self.thread_id)]:
             row = await self.bot.db.progress_by_thread(i.guild_id, self.thread_id)
-            if not row or row['kind'] not in ('contract','promotion') or row['status'] != 'pending':
+            if not row or row['kind'] not in ('contract','promotion','green','warn') or row['status'] != 'pending':
                 return await i.followup.send('Заявка уже закрыта или не найдена.', ephemeral=True)
             allowed = await self.bot.can_promote(i.user) if row['kind'] == 'promotion' else await self.bot.is_high_staff(i.user)
             if not allowed:
@@ -124,13 +169,14 @@ class DecisionModal(SafeModal, title='Решение по заявке'):
                 return await i.followup.send('Автор больше не состоит в семье.', ephemeral=True)
             if self.accepted and row['kind'] == 'promotion' and str(self.checklist).strip().lower() != 'подтверждаю':
                 return await i.followup.send('Проверь все пять условий и напиши «подтверждаю».', ephemeral=True)
-            if self.accepted and row['kind'] == 'contract':
+            if self.accepted and row['kind'] in ('contract', 'green', 'warn'):
                 evidence = False
                 async for msg in i.channel.history(limit=None):
                     if msg.author.id == row['member_id'] and any((a.content_type or '').startswith('image/') for a in msg.attachments):
                         evidence = True; break
                 if not evidence:
-                    return await i.followup.send('Автор ещё не прикрепил скриншот контракта в эту ветку.', ephemeral=True)
+                    labels = {'contract': 'контракта', 'green': 'с планшета', 'warn': 'контракта или грина'}
+                    return await i.followup.send(f'Автор ещё не прикрепил скриншот {labels[row["kind"]]} в эту ветку.', ephemeral=True)
             if self.accepted and row['kind'] == 'promotion':
                 await award_main(self.bot, i.guild, member)
             status = 'approved' if self.accepted else 'rejected'
@@ -151,7 +197,7 @@ class ProgressReviewView(SafeView):
         super().__init__(timeout=None); self.bot=bot
     async def decide(self, i, accepted):
         row = await self.bot.db.progress_kind_by_thread(i.guild_id, i.channel_id)
-        if not row or row['kind'] not in ('contract','promotion') or not isinstance(i.user, discord.Member):
+        if not row or row['kind'] not in ('contract','promotion','green','warn') or not isinstance(i.user, discord.Member):
             return await i.response.send_message('Заявка не найдена.', ephemeral=True)
         allowed = await self.bot.can_promote(i.user) if row['kind'] == 'promotion' else await self.bot.is_high_staff(i.user)
         if not allowed:

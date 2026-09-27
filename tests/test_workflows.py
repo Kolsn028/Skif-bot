@@ -10,7 +10,7 @@ import discord
 from bot.database import Database
 from bot.interactions import private_thread
 from bot.provisioning import provision, ROLE_SPECS
-from bot.ui import application_panel_embed, vacation_panel_embed, case_panel_embed
+from bot.ui import application_panel_embed, vacation_panel_embed
 
 class Workflows(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -109,8 +109,8 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         initial=len(channels)
         await provision(bot,guild,{})
         self.assertEqual(len(channels),initial)
-        self.assertEqual(guild.create_role.await_count,13)
-        self.assertEqual(len(messages),9)
+        self.assertEqual(guild.create_role.await_count,10)
+        self.assertEqual(len(messages),10)
         self.assertTrue(all(m.edit.await_count==1 for m in messages.values()))
         cfg=await self.db.get_config(1)
         staff=channels[cfg['applications_log_channel_id']]
@@ -144,7 +144,7 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(create.await_count,1)
 
     async def test_panels_fit_discord_limits(self):
-        for factory in (application_panel_embed,vacation_panel_embed,case_panel_embed):
+        for factory in (application_panel_embed,vacation_panel_embed):
             e=factory(); self.assertLessEqual(len(e),6000)
             for f in e.fields:
                 self.assertLessEqual(len(f.name),256)
