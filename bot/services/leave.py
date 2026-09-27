@@ -1,5 +1,6 @@
 """Resumable vacation role transitions; no UI or notification calls."""
 import json
+
 from ..access import HIGH_KEYS
 
 

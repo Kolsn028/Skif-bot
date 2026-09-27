@@ -7,8 +7,7 @@ from .access import may_confirm_attendance as may_confirm
 
 
 async def audit(db,guild_id,actor,action,target,details):
-    await db.conn.execute('INSERT INTO audit_actions(guild_id,actor_id,action,target_id,details,created_at) VALUES (?,?,?,?,?,?)',
-        (guild_id,actor,action,target,json.dumps(details,ensure_ascii=False),datetime.now(timezone.utc).isoformat()))
+    await db.record_audit(guild_id, actor, action, target, details)
 
 
 async def join(db,event_id,member_id,leave=False,seat='main'):
@@ -19,15 +18,14 @@ async def join(db,event_id,member_id,leave=False,seat='main'):
         current=await db._one('SELECT * FROM event_signups WHERE event_id=? AND member_id=?',(event_id,member_id))
         if leave:
             if current and current['attended']:return 'Присутствие уже подтверждено. Изменение — через организатора.'
-            await db.conn.execute('DELETE FROM event_signups WHERE event_id=? AND member_id=?',(event_id,member_id))
-            await db.conn.commit();return 'Ты вышел из списка.'
+            await db.delete_event_signup(event_id, member_id)
+            return 'Ты вышел из списка.'
         if current:return 'Ты уже записан.'
         cap=event['capacity'] if seat=='main' else event['reserve_capacity']
         count=await db._one('SELECT COUNT(*) n FROM event_signups WHERE event_id=? AND seat=?',(event_id,seat))
         if count['n']>=cap:return 'Основа заполнена — нажми «В резерв».' if seat=='main' else 'Резерв заполнен. Дождись свободного места или обратись к организатору.'
-        await db.conn.execute('INSERT INTO event_signups(event_id,member_id,joined_at,seat) VALUES (?,?,?,?)',
-            (event_id,member_id,datetime.now(timezone.utc).isoformat(),seat))
-        await db.conn.commit();return 'Ты записан!' if seat=='main' else 'Ты записан в резерв!'
+        await db.create_event_signup(event_id, member_id, seat)
+        return 'Ты записан!' if seat=='main' else 'Ты записан в резерв!'
 
 
 async def move(db,event_id,member_id,seat,actor):
@@ -41,9 +39,8 @@ async def move(db,event_id,member_id,seat,actor):
         cap=event['capacity'] if seat=='main' else event['reserve_capacity']
         count=await db._one('SELECT COUNT(*) n FROM event_signups WHERE event_id=? AND seat=?',(event_id,seat))
         if count['n']>=cap:raise ValueError('В выбранном составе нет свободных мест. Сначала измени лимит или освободи место.')
-        await db.conn.execute('UPDATE event_signups SET seat=? WHERE event_id=? AND member_id=?',(seat,event_id,member_id))
-        await audit(db,event['guild_id'],actor,'seat',member_id,{'event':event_id,'from':row['seat'],'to':seat})
-        await db.conn.commit()
+        await db.update_event_signup_seat(event_id, member_id, seat)
+        await db.record_audit(event['guild_id'], actor, 'seat', member_id, {'event': event_id, 'from': row['seat'], 'to': seat})
 
 
 async def limits(db,event_id,main,reserve,actor):
@@ -55,8 +52,8 @@ async def limits(db,event_id,main,reserve,actor):
         rows=await db._all('SELECT seat,COUNT(*) n FROM event_signups WHERE event_id=? GROUP BY seat',(event_id,))
         if any(r['n'] > (main if r['seat']=='main' else reserve) for r in rows):
             raise ValueError('Новый лимит меньше числа записанных. Сначала перемести участников.')
-        await db.conn.execute('UPDATE family_events SET capacity=?,reserve_capacity=? WHERE id=?',(main,reserve,event_id))
-        await audit(db,event['guild_id'],actor,'limits',event_id,{'main':main,'reserve':reserve});await db.conn.commit()
+        await db.update_event_limits(event_id, main, reserve)
+        await db.record_audit(event['guild_id'], actor, 'limits', event_id, {'main': main, 'reserve': reserve})
 
 
 async def confirm(db,event_id,member_id,actor):
@@ -66,8 +63,7 @@ async def confirm(db,event_id,member_id,actor):
             raise ValueError('Подтверждать присутствие можно после начала МП.')
         row=await db._one('SELECT * FROM event_signups WHERE event_id=? AND member_id=?',(event_id,member_id))
         if not row:raise ValueError('Этот участник не записан.')
-        value=1-row['attended'];now=datetime.now(timezone.utc).isoformat()
-        await db.conn.execute('UPDATE event_signups SET attended=?,confirmed_by=?,confirmed_at=? WHERE event_id=? AND member_id=?',
-            (value,actor,now,event_id,member_id))
-        await audit(db,event['guild_id'],actor,'attendance',member_id,{'event':event_id,'confirmed':value});await db.conn.commit()
+        value=1-row['attended']
+        await db.update_event_attendance(event_id, member_id, value, actor)
+        await db.record_audit(event['guild_id'], actor, 'attendance', member_id, {'event': event_id, 'confirmed': value})
 

@@ -1,9 +1,12 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.progression import award_main
-from bot.roles import is_family, may_recruit, may_review_reports, may_promote
+from bot.roles import is_family, may_promote, may_recruit, may_review_reports
+
 
 class MainRank(unittest.IsolatedAsyncioTestCase):
     async def test_award_adds_main_before_removing_novice_and_stops_on_failure(self):

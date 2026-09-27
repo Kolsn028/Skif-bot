@@ -1,7 +1,19 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from bot.roles import may_recruit, may_review_reports, is_family, notify_recruiters, named_role, STAFF_KEYS, configured_roles, may_promote, may_review_vacation, may_manage_recruiters
+
+from bot.roles import (
+    STAFF_KEYS,
+    configured_roles,
+    is_family,
+    may_manage_recruiters,
+    may_promote,
+    may_recruit,
+    may_review_reports,
+    may_review_vacation,
+    named_role,
+    notify_recruiters,
+)
 from bot.ui import application_banner_file, application_panel_embed
 
 CFG = dict(leader_role_id=1, dep_leader_role_id=2, high_staff_role_id=3,

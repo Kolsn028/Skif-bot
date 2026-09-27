@@ -1,9 +1,11 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
+
 from bot.commands import register_commands
 
 
@@ -45,8 +47,9 @@ class SetupAccess(unittest.IsolatedAsyncioTestCase):
             self.assertIs(provision.call_args.args[2]['main_role_id'], selected)
 
     async def test_guild_sync_removes_old_auto_command(self):
-        from collections import defaultdict
         import asyncio
+        from collections import defaultdict
+
         from bot.core import SkifBot
         guild = SimpleNamespace(id=100)
         stale = SimpleNamespace(name='setup_auto', options=[])

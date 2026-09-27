@@ -1,5 +1,21 @@
+# Secrets and local environment
 .env
+
+# Python
 __pycache__/
 *.pyc
+.ruff_cache/
+
+# Data
+data/
 data/*.db
 data/*.db-*
+
+# Temporary and sandbox directories
+.tmp-tests/
+sandbox-tmp/
+testtmp/
+tmpastl7w30/
+
+# Claude
+.claude/

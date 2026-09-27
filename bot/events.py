@@ -1,11 +1,13 @@
 """Family event signups with staff-only creation and verified attendance."""
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 import discord
-from .performance import coalesced_panel, edit_if_changed
-from .access import may_manage_events
-from .interactions import SafeView, SafeModal
-from .ui import base_embed
+
 from . import roster
+from .access import may_manage_events
+from .interactions import SafeModal, SafeView
+from .performance import coalesced_panel, edit_if_changed
+from .ui import base_embed
 
 EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', 0x3BAA72),
           'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}

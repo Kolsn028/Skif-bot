@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import discord
+from ..timeutil import msk_today
 from ..ui import base_embed
 from ..roles import configured_roles, HIGH_KEYS, notify_assistants
 from ..interactions import SafeModal, SafeView, serialized, private_thread
@@ -30,11 +31,10 @@ class VacationModal(SafeModal, title="Заявка на отдых"):
         review_ch = interaction.guild.get_channel(cfg.get("vacation_review_channel_id") or 0)
         if not isinstance(review_ch, discord.TextChannel):
             return await interaction.response.send_message("Канал отпусков не настроен.", ephemeral=True)
-        accepted = cfg.get("accepted_role_id")
         if not await self.bot.is_family_member(interaction.user):
             return await interaction.response.send_message("Отдых доступен участникам семьи.", ephemeral=True)
         await interaction.response.defer(ephemeral=True, thinking=True)
-        start, end = date.today(), date.today() + timedelta(days=days)
+        start, end = msk_today(), msk_today() + timedelta(days=days)
         vid = await self.bot.db.create_vacation(guild_id=interaction.guild.id, member_id=interaction.user.id, member_tag=str(interaction.user), reason=str(self.reason), start_date=start.isoformat(), end_date=end.isoformat(), status="pending", created_at=self.bot.now_iso(), updated_at=self.bot.now_iso())
         e = base_embed(f"🌴 Заявка на отдых #{vid}", f"Участник: {interaction.user.mention}", 0xD5A43A)
         e.add_field(name="Причина", value=str(self.reason)[:1024], inline=False)

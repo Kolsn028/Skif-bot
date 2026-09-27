@@ -2,10 +2,13 @@ import asyncio
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock,MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.database import Database
-from bot.events import signup,card,may_manage_events,CreateEventModal,EventView,EventPanelView,parse_time
+from bot.events import CreateEventModal, EventPanelView, EventView, card, may_manage_events, parse_time, signup
+
 
 class Events(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

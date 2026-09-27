@@ -1,9 +1,12 @@
 import unittest
 from types import SimpleNamespace as NS
 from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.membership import accept_member, repair_members, sync_application_members
 from bot.roles import is_family
+
 
 class Membership(unittest.IsolatedAsyncioTestCase):
     def environment(self):

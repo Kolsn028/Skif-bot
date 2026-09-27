@@ -4,11 +4,22 @@ import gzip
 import hashlib
 import io
 import json
+import logging
 import os
+import re
 from time import monotonic
 from datetime import datetime, timezone
 import discord
 from .roles import HIGH_KEYS, configured_roles
+
+log = logging.getLogger(__name__)
+
+BACKUP_FILENAME_RE = re.compile(r'^skif-state-([0-9a-f]{64})\.json\.gz$')
+
+
+def _checksum_from_filename(filename: str) -> str | None:
+    match = BACKUP_FILENAME_RE.match(filename)
+    return match.group(1) if match else None
 
 TABLES = ('guild_config', 'applications', 'recruiter_stats', 'vacations',
           'personal_cases', 'family_events', 'event_signups', 'progress_requests',
@@ -188,22 +199,27 @@ class DiscordBackups:
             async for msg in matches[0].history(limit=50):
                 if msg.author.id != self.bot.user.id or len(msg.attachments) != 1:
                     continue
-                parts = msg.content.split()
-                if len(parts) != 2 or parts[0] != 'SKIF_BACKUP_V1':
+                # New backups keep the checksum in the attachment filename; old
+                # messages used the content line and remain restorable.
+                checksum = _checksum_from_filename(msg.attachments[0].filename)
+                if checksum is None:
+                    parts = msg.content.split()
+                    checksum = parts[1] if len(parts) == 2 and parts[0] == 'SKIF_BACKUP_V1' else None
+                if checksum is None:
                     continue
                 if msg.attachments[0].size > MAX_FILE:
                     continue
                 try:
-                    payload = decode(await msg.attachments[0].read(), parts[1], guild.id)
+                    payload = decode(await msg.attachments[0].read(), checksum, guild.id)
                 except (ValueError, OSError, EOFError, KeyError, TypeError):
                     continue
                 # Database conflicts stop startup rather than silently dropping data.
                 await restore_payload(self.bot.db, payload)
                 self.last[guild.id] = payload
-                self.hashes[guild.id] = parts[1]
+                self.hashes[guild.id] = checksum
                 self.saved_at[guild.id] = msg.created_at.isoformat()
                 restored = True
-                print(f'Discord backup restored | guild={guild.id} | message={msg.id}')
+                log.info('Discord backup restored | guild=%s | message=%s', guild.id, msg.id)
                 break
             if not restored:
                 raise RuntimeError(f'No valid backup in channel {matches[0].id}; refusing empty startup')
@@ -271,8 +287,7 @@ class DiscordBackups:
                 return
             channels = await self.ensure_channels(guild)
             message = await channels['backup'].send(
-                content=f'SKIF_BACKUP_V1 {checksum}',
-                file=discord.File(io.BytesIO(blob), filename='skif-state.json.gz'),
+                file=discord.File(io.BytesIO(blob), filename=f'skif-state-{checksum}.json.gz'),
                 allowed_mentions=discord.AllowedMentions.none())
             if not message.attachments or hashlib.sha256(await message.attachments[0].read()).hexdigest() != checksum:
                 raise RuntimeError('Не удалось подтвердить сохранённую копию.')
@@ -302,7 +317,7 @@ class DiscordBackups:
                     await self.save(guild, automatic=True)
                 except Exception as exc:
                     self.errors[guild.id] = str(exc)
-                    print(f'Discord backup failed | guild={guild.id}: {exc}')
+                    log.error('Discord backup failed | guild=%s: %s', guild.id, exc, exc_info=True)
             # Failed writes retry on the periodic wake, never a tight loop.
 
     async def close(self):
@@ -317,4 +332,4 @@ class DiscordBackups:
                 try:
                     await asyncio.wait_for(self.save(guild), timeout=10)
                 except Exception as exc:
-                    print(f'Final Discord backup failed | guild={guild.id}: {exc}')
+                    log.error('Final Discord backup failed | guild=%s: %s', guild.id, exc, exc_info=True)

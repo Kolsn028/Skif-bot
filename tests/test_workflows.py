@@ -7,10 +7,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
+
 from bot.database import Database
 from bot.interactions import private_thread
-from bot.provisioning import provision, ROLE_SPECS
+from bot.provisioning import provision
 from bot.ui import application_panel_embed, vacation_panel_embed
+
 
 class Workflows(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -120,8 +122,9 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(parent.overwrites[guild.default_role].send_messages)
 
     async def test_vacation_creates_thread_and_prevents_duplicate(self):
-        from bot.views import VacationModal
         from datetime import datetime, timezone
+
+        from bot.views import VacationModal
         guild=MagicMock(spec=discord.Guild); guild.id=11
         parent=MagicMock(spec=discord.TextChannel); parent.id=22
         leader=MagicMock(spec=discord.Role); leader.id=33

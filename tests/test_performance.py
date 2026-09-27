@@ -1,13 +1,15 @@
 import asyncio
 import unittest
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-from datetime import datetime, timezone, timedelta
+
 import discord
-from bot.performance import edit_if_changed, coalesced_panel
+
 from bot.interactions import serialized
-from bot.tiers import sync_reviewers, GUILD_ID
+from bot.performance import coalesced_panel, edit_if_changed
+from bot.tiers import GUILD_ID, sync_reviewers
 
 
 class Performance(unittest.IsolatedAsyncioTestCase):

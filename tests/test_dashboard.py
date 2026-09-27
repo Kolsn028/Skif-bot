@@ -1,12 +1,15 @@
 import tempfile
 import unittest
-from datetime import datetime,timezone,date
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock,MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
+from bot.dashboard import ManagementView, request_rows
 from bot.database import Database
-from bot.dashboard import request_rows,ManagementView
-from bot.events import parse_time,CreateEventModal,DayView
+from bot.events import CreateEventModal, parse_time
+
 
 class Comfort(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

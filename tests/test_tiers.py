@@ -1,8 +1,11 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock,MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
 import discord
-from bot.tiers import award_tier,TIER_ROLES,GUILD_ID,TierModal,can_review,TIERCHECK_ROLE_ID,TierReviewView,TierDecision
+
+from bot.tiers import GUILD_ID, TIER_ROLES, TIERCHECK_ROLE_ID, TierDecision, TierModal, TierReviewView, award_tier, can_review
+
 
 class Role:
     managed=False
@@ -70,8 +73,9 @@ class Tiers(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await can_review(bot,i))
 
     async def test_access_repair_includes_archive_and_is_repeat_safe(self):
-        from collections import defaultdict
         import asyncio
+        from collections import defaultdict
+
         from bot.tiers import sync_reviewers
         reviewer=SimpleNamespace(id=50,bot=False,get_role=lambda rid:rid==TIERCHECK_ROLE_ID)
         thread=MagicMock(spec=discord.Thread);thread.id=80;thread.archived=True;thread.locked=True
@@ -97,8 +101,9 @@ class Tiers(unittest.IsolatedAsyncioTestCase):
         thread.add_user.assert_awaited_once()
 
     async def test_access_repair_restores_archive_even_when_invitation_fails(self):
-        from collections import defaultdict
         import asyncio
+        from collections import defaultdict
+
         from bot.tiers import sync_reviewers
         reviewer=SimpleNamespace(id=50,bot=False,get_role=lambda rid:rid==TIERCHECK_ROLE_ID)
         thread=MagicMock(spec=discord.Thread);thread.archived=True;thread.locked=True

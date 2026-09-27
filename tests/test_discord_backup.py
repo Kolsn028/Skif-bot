@@ -1,13 +1,13 @@
-import copy
+import asyncio
 import tempfile
 import unittest
-import asyncio
 from collections import defaultdict
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-from pathlib import Path
+
 from bot.database import Database
-from bot.discord_backup import snapshot, encode, decode, restore_payload, change_lines, DiscordBackups
+from bot.discord_backup import DiscordBackups, change_lines, decode, encode, restore_payload, snapshot
 
 
 class DiscordStorage(unittest.IsolatedAsyncioTestCase):

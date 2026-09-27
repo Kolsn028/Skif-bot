@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import discord
-from ..ui import base_embed, activity_type_label
-from ..roles import notify_assistants
+
 from ..interactions import SafeModal, SafeView
+from ..roles import notify_assistants
+from ..ui import activity_type_label, base_embed
 from .shared import _id_from_title
 
 

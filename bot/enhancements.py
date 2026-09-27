@@ -1,10 +1,13 @@
 """Repeatable case recovery, dated decisions and two-hour recruiter reminders."""
+import logging
 from datetime import datetime, timezone, timedelta
 import discord
 from .performance import edit_if_changed
 from .interactions import SafeModal
 from .roles import application_recruiters, HIGH_KEYS, has_role, is_leader
 from .ui import base_embed
+
+log = logging.getLogger(__name__)
 
 
 def stamp(value):
@@ -119,7 +122,7 @@ async def remind_applications(bot,guild):
                     await thread.send(' '.join(m.mention for m in group)+f"\n⏰ Заявка #{app['id']} ждёт ответа более 2 часов.",allowed_mentions=discord.AllowedMentions(everyone=False,roles=False,users=group,replied_user=False))
                 await bot.db.update_application(app['id'],last_reminded_at=now.isoformat())
             except discord.DiscordException as exc:
-                print(f'Reminder failed | guild={guild.id} | application={app["id"]}: {exc}')
+                log.error('Reminder failed | guild=%s | application=%s: %s', guild.id, app['id'], exc, exc_info=True)
 
 
 async def refresh_interface(bot,guild):
@@ -157,4 +160,4 @@ async def refresh_interface(bot,guild):
         except discord.NotFound: continue
     from .dashboard import install_hub
     await install_hub(bot,guild)
-    print(f'Interface refreshed | guild={guild.id}')
+    log.info('Interface refreshed | guild=%s', guild.id)

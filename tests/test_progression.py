@@ -4,9 +4,12 @@ import unittest
 from collections import defaultdict
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import discord
+
 from bot.database import Database
 from bot.progression import DecisionModal
+
 
 class Progression(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

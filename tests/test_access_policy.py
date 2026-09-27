@@ -1,5 +1,6 @@
 """Keep role combinations and explicit exceptions stable across UI refactors."""
 import os
+
 os.environ.setdefault('TIER_GUILD_ID', '1')
 os.environ.setdefault('TIERCHECK_ROLE_ID', '42')
 os.environ.setdefault('TIER_1_ROLE_ID', '101')
@@ -7,6 +8,7 @@ os.environ.setdefault('TIER_2_ROLE_ID', '102')
 os.environ.setdefault('TIER_3_ROLE_ID', '103')
 import unittest
 from types import SimpleNamespace as NS
+
 from bot import access
 
 CFG = dict(leader_role_id=1, dep_leader_role_id=2, high_staff_role_id=3,

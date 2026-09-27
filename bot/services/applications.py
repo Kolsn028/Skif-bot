@@ -5,6 +5,7 @@ its own lock so callers outside a view also serialize approval/rejection safely.
 It never sends messages; a failed notification cannot undo a recorded decision.
 """
 import discord
+
 from ..access import may_decide_application
 from ..membership import accept_member
 

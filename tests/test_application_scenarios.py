@@ -7,13 +7,13 @@ from datetime import datetime, timezone
 from types import SimpleNamespace as NS
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import discord
 import aiosqlite
+import discord
 
 from bot.database import Database
 from bot.forms.applications import ApplicationModal, RecruiterActionSelect
-from bot.services.applications import decide, ApplicationDecisionError
 from bot.profiles import records
+from bot.services.applications import ApplicationDecisionError, decide
 
 
 class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):

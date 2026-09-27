@@ -1,5 +1,6 @@
 """Role changes for Main and tiers, independent of review forms."""
-from ..access import TIER_GUILD_ID as GUILD_ID, env_id
+from ..access import TIER_GUILD_ID as GUILD_ID
+from ..access import env_id
 
 TIER_ROLES={n: env_id(f'TIER_{n}_ROLE_ID') for n in (1,2,3)}
 

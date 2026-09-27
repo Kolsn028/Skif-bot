@@ -1,7 +1,6 @@
 """Combine refresh bursts and skip semantically identical panel edits."""
 import asyncio
 import functools
-import discord
 
 
 def embed_content(embed):

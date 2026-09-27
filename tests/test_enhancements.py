@@ -2,14 +2,17 @@ import asyncio
 import tempfile
 import unittest
 from collections import defaultdict
-from datetime import datetime,timezone,timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock,MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.database import Database
-from bot.enhancements import decide_application,recruiter_board,find_case,create_case_channel,remind_applications
-from bot.profiles import can_view,records
-from bot.events import EventView,RosterManageView
+from bot.enhancements import create_case_channel, decide_application, find_case, recruiter_board, remind_applications
+from bot.events import EventView, RosterManageView
+from bot.profiles import can_view, records
+
 
 class Improvements(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

@@ -3,7 +3,17 @@
 .github
 __pycache__
 *.pyc
+.ruff_cache
 data/
 docs/
 tests/
 *.md
+
+# Temporary and sandbox directories
+.tmp-tests/
+sandbox-tmp/
+testtmp/
+tmpastl7w30/
+
+# Claude
+.claude/

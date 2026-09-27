@@ -1,22 +1,44 @@
 from __future__ import annotations
+
 import asyncio
 import json
 from pathlib import Path
+
 import aiosqlite
 
-
-from .repositories.writes import WriteRepository
 from .repositories.applications import ApplicationsRepository
-from .repositories.progress import ProgressRepository
 from .repositories.events import EventsRepository
 from .repositories.profiles import ProfilesRepository
+from .repositories.progress import ProgressRepository
+from .repositories.writes import WriteRepository
+
+
+class _TaskLocalLock:
+    """Re-entrant lock for a single asyncio task."""
+
+    def __init__(self):
+        self._lock = asyncio.Lock()
+        self._owner = None
+
+    async def __aenter__(self):
+        current = asyncio.current_task()
+        if self._owner is not current:
+            await self._lock.acquire()
+            self._owner = current
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        if self._owner is asyncio.current_task():
+            self._owner = None
+            self._lock.release()
+        return False
 
 
 class Database(WriteRepository, ApplicationsRepository, ProgressRepository, EventsRepository, ProfilesRepository):
     def __init__(self, path: str):
         self.path = path
         self.conn: aiosqlite.Connection | None = None
-        self.lock = asyncio.Lock()
+        self.lock = _TaskLocalLock()
         self._config_cache: dict[int, dict] = {}
 
     async def connect(self):

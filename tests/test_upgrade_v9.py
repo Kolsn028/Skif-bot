@@ -1,13 +1,19 @@
-import asyncio,json,tempfile,unittest
+import asyncio
+import json
+import tempfile
+import unittest
 from collections import defaultdict
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock,MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.database import Database
-from bot.leave import begin_leave,restore_leave,removable_roles
-from bot.roster import join,move,limits,confirm,may_confirm
-from bot.profiles import records,render,can_view
+from bot.leave import begin_leave, restore_leave
+from bot.profiles import can_view, records, render
+from bot.roster import confirm, join, limits, may_confirm, move
+
 
 class Role:
     def __init__(self,rid,pos,managed=False):

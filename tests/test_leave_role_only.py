@@ -1,7 +1,9 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+
 import discord
+
 from bot.leave import begin_leave, restore_leave
 
 

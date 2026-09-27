@@ -1,11 +1,13 @@
 """Named data operations with real SQLite, including server boundaries."""
 import ast
-import aiosqlite
 import tempfile
 import unittest
 from pathlib import Path
-from bot.database import Database
+
+import aiosqlite
+
 from bot import roster
+from bot.database import Database
 from bot.profiles import records
 
 
