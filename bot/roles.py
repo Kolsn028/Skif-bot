@@ -35,6 +35,39 @@ def named_role(guild, key):
     return matches[0] if matches else None
 
 
+def tier_role_ids():
+    import os
+    def rid(name):
+        value = (os.getenv(name) or '').strip()
+        return int(value) if value.isdigit() else 0
+    return {'tiercheck': rid('TIERCHECK_ROLE_ID'),
+            **{n: rid(f'TIER_{n}_ROLE_ID') for n in (1, 2, 3)}}
+
+
+def configured_tier_roles(guild):
+    """Resolve tier roles from env IDs; fall back to exact existing role names."""
+    import os
+    ids = tier_role_ids()
+    resolved = {}
+
+    def by_env(env_id, fallback_names):
+        if env_id:
+            role = guild.get_role(env_id)
+            if role is not None:
+                return role
+        names = {n.casefold() for n in fallback_names}
+        matches = [r for r in guild.roles
+                   if r.name.casefold() in names and not r.managed and not r.is_default()]
+        if len(matches) > 1:
+            raise ValueError(f'Несколько ролей «{fallback_names[0]}». Выбери нужную явно в /setup.')
+        return matches[0] if matches else None
+
+    resolved['tiercheck'] = by_env(ids['tiercheck'], ('tiercheck', 'TierCheck', 'Тирчек'))
+    for n in (1, 2, 3):
+        resolved[n] = by_env(ids[n], (f'Тир {n}', f'Tier {n}'))
+    return resolved
+
+
 def configured_roles(guild, cfg, keys):
     return [r for key in keys if (r := guild.get_role(cfg.get(key) or 0)) is not None]
 

@@ -180,6 +180,10 @@ class Database(WriteRepository, ApplicationsRepository, ProgressRepository, Even
             "activity_log_channel_id": "INTEGER",
             "inactivity_report_channel_id": "INTEGER",
             "inactivity_report_message_id": "INTEGER",
+            "tiercheck_role_id": "INTEGER",
+            "tier_1_role_id": "INTEGER",
+            "tier_2_role_id": "INTEGER",
+            "tier_3_role_id": "INTEGER",
         }
         needed['events_category_id'] = 'INTEGER'
         for kind in ('mcl','vzm','vzz','capt'):

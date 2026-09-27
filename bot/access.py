@@ -47,13 +47,16 @@ def is_family(member, cfg):
 
 
 # Tier review deliberately has no owner/admin/senior-role bypass.
-# IDs come from the environment; tiers stay disabled until they are set.
+# Tiers work on the configured guild; the reviewer role is attached by setup.
 TIER_GUILD_ID = env_id('TIER_GUILD_ID') or env_id('GUILD_ID')
 TIERCHECK_ROLE_ID = env_id('TIERCHECK_ROLE_ID')
 
 
-def may_review_tiers(member, guild_id):
-    return guild_id == TIER_GUILD_ID and bool(member.get_role(TIERCHECK_ROLE_ID))
+def may_review_tiers(member, guild_id, cfg=None):
+    if guild_id != TIER_GUILD_ID:
+        return False
+    role_id = TIERCHECK_ROLE_ID or (cfg or {}).get('tiercheck_role_id')
+    return bool(role_id and member.get_role(role_id))
 
 
 def may_manage_events(member, cfg):

@@ -11,7 +11,10 @@ from .services.ranks import TIER_ROLES
 KINDS=('tier_1','tier_2','tier_3')
 
 async def can_review(bot,i):
-    return isinstance(i.user, discord.Member) and may_review_tiers(i.user, i.guild_id)
+    if not isinstance(i.user, discord.Member) or i.guild_id != GUILD_ID:
+        return False
+    cfg = await bot.db.get_config(i.guild_id)
+    return may_review_tiers(i.user, i.guild_id, cfg)
 
 def panel(tier):
     return base_embed(f'Повышение на тир {tier}','Прикрепи ссылки на откаты и расскажи, зачем тебе нужен тир.\nРассматривают **tiercheck**. При одобрении другие тиры заменяются выбранным.',0xA82D40)
@@ -31,14 +34,18 @@ class TierModal(SafeModal):
         self.add_item(self.purpose)
     async def on_submit(self,i):
         if i.guild_id!=GUILD_ID or not isinstance(i.user,discord.Member) or not await self.bot.is_family_member(i.user):return await i.response.send_message('Заявки доступны участникам Skif.',ephemeral=True)
+        cfg=await self.bot.db.get_config(i.guild_id)
+        tiercheck_id=cfg.get('tiercheck_role_id') or TIERCHECK_ROLE_ID
+        tier_ids={n:cfg.get(f'tier_{n}_role_id') or TIER_ROLES.get(n) for n in (1,2,3)}
+        tier_role=i.guild.get_role(tier_ids[self.tier])
+        reviewer_role=i.guild.get_role(tiercheck_id)
+        if not tier_role:raise ValueError('Роль тира удалена. Сообщи Хай.')
+        if not reviewer_role:raise ValueError('Не найдена роль tiercheck.')
         await i.response.defer(ephemeral=True)
         async with self.bot.operation_locks[('tier_member',i.guild_id,i.user.id)]:
             existing=await self.bot.db.find_open_tier(i.guild_id, i.user.id)
             if existing:return await i.followup.send(f"У тебя уже есть заявка: <#{existing['thread_id']}>.",ephemeral=True)
             if (getattr(i.channel,'topic',None) or '')!=f'skif:tier:{self.tier}:{self.bot.user.id}:{i.guild_id}':raise ValueError('Открой актуальный канал тира.')
-            if not i.guild.get_role(TIER_ROLES[self.tier]):raise ValueError('Роль тира удалена. Сообщи High.')
-            reviewer_role=i.guild.get_role(TIERCHECK_ROLE_ID)
-            if not reviewer_role:raise ValueError('Не найдена роль tiercheck.')
             thread=await private_thread(i.channel,i.user,[reviewer_role],f'тир-{self.tier}-{i.user.display_name}')
             fields=[('Ник / возраст / статик',str(self.identity)),('Откаты с ГГ',str(self.gg)),('Откаты с Каптов',str(self.kapt)),('Откаты с МЦЛ',str(self.mcl) or 'Не приложены'),('Для чего нужен тир',str(self.purpose))]
             try:
@@ -53,7 +60,7 @@ class TierModal(SafeModal):
                 raise
             await i.followup.send(f'Заявка отправлена: {thread.mention}',ephemeral=True)
             # Notify in the parent channel; application details stay in the private thread.
-            await i.channel.send(f'<@&{TIERCHECK_ROLE_ID}> · Новая заявка на **тир {self.tier}**: {thread.mention}',allowed_mentions=discord.AllowedMentions(everyone=False,users=False,roles=[discord.Object(id=TIERCHECK_ROLE_ID)],replied_user=False))
+            await i.channel.send(f'<@&{tiercheck_id}> · Новая заявка на **тир {self.tier}**: {thread.mention}',allowed_mentions=discord.AllowedMentions(everyone=False,users=False,roles=[discord.Object(id=tiercheck_id)],replied_user=False))
 
 class TierPanelView(SafeView):
     def __init__(self,bot):super().__init__(timeout=None);self.bot=bot
@@ -117,14 +124,16 @@ async def install(bot,guild):
     if guild.id!=GUILD_ID:return
     cfg=await bot.db.get_config(guild.id);category=guild.get_channel(cfg.get('family_category_id') or 0)
     if not isinstance(category,discord.CategoryChannel):raise ValueError('Не найдена настроенная категория SKIF • СОСТАВ.')
-    if any(not guild.get_role(rid) for rid in TIER_ROLES.values()):raise ValueError('Не найдены указанные роли тиров.')
-    reviewer_role=guild.get_role(TIERCHECK_ROLE_ID)
+    tiercheck_id=cfg.get('tiercheck_role_id') or TIERCHECK_ROLE_ID
+    tier_ids={n:cfg.get(f'tier_{n}_role_id') or TIER_ROLES.get(n) for n in (1,2,3)}
+    if any(not guild.get_role(rid) for rid in tier_ids.values()):raise ValueError('Не найдены указанные роли тиров.')
+    reviewer_role=guild.get_role(tiercheck_id)
     if not reviewer_role:raise ValueError('Не найдена роль tiercheck.')
     family=[reviewer_role]+configured_roles(guild,cfg,STAFF_KEYS+('family_role_id','accepted_role_id','main_role_id'))
     ow={guild.default_role:discord.PermissionOverwrite(view_channel=False),guild.me:discord.PermissionOverwrite(view_channel=True,send_messages=True,embed_links=True,read_message_history=True,create_private_threads=True,send_messages_in_threads=True,manage_threads=True)}
     for r in family:ow[r]=discord.PermissionOverwrite(view_channel=True,send_messages=False,read_message_history=True,send_messages_in_threads=True)
     channels=await guild.fetch_channels()
-    for tier in TIER_ROLES:
+    for tier in tier_ids:
         name=f'повышение-на-тир-{tier}';topic=f'skif:tier:{tier}:{bot.user.id}:{guild.id}'
         matches=[c for c in channels if isinstance(c,discord.TextChannel) and (c.topic==topic or (c.category_id==category.id and c.name==name))]
         if len(matches)>1:raise ValueError(f'Найдены дубли канала {name}.')
@@ -153,11 +162,13 @@ async def sync_reviewers(bot,guild,member=None):
 
 async def _sync_reviewers(bot,guild,member=None):
     if guild.id!=GUILD_ID:return
-    role=guild.get_role(TIERCHECK_ROLE_ID)
+    cfg=await bot.db.get_config(guild.id)
+    tiercheck_id=cfg.get('tiercheck_role_id') or TIERCHECK_ROLE_ID
+    role=guild.get_role(tiercheck_id)
     if not role:return
     if member is None and not guild.chunked:await guild.chunk(cache=True)
     reviewers=[member] if member else list(role.members)
-    reviewers=[m for m in reviewers if not m.bot and m.get_role(TIERCHECK_ROLE_ID)]
+    reviewers=[m for m in reviewers if not m.bot and m.get_role(tiercheck_id)]
     rows=await bot.db.tier_threads(guild.id)
     added=0;failed=0
     for row in rows:
@@ -165,14 +176,14 @@ async def _sync_reviewers(bot,guild,member=None):
             try:
                 thread=await guild.fetch_channel(row['thread_id'])
                 if not isinstance(thread,discord.Thread) or not thread.parent:continue
-                valid={f'skif:tier:{tier}:{bot.user.id}:{guild.id}' for tier in TIER_ROLES}
+                valid={f'skif:tier:{tier}:{bot.user.id}:{guild.id}' for tier in (1,2,3)}
                 if thread.parent.topic not in valid:continue
                 if member is None:
                     members={m.id for m in await thread.fetch_members()}
                 else:
                     try:await thread.fetch_member(member.id);members={member.id}
                     except discord.NotFound:members=set()
-                missing=[m for m in reviewers if m.id not in members and (guild.get_member(m.id) or m).get_role(TIERCHECK_ROLE_ID)]
+                missing=[m for m in reviewers if m.id not in members and (guild.get_member(m.id) or m).get_role(tiercheck_id)]
                 if not missing:continue
                 archived,locked=thread.archived,thread.locked
                 try:

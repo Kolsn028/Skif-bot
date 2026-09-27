@@ -3,7 +3,7 @@ import discord
 from .ui import base_embed, application_panel_embed, vacation_panel_embed, case_panel_embed
 from .views import ApplicationPanelView, VacationPanelView, CasePanelView
 
-from .roles import ROLE_SPECS, named_role, HIGH_KEYS
+from .roles import ROLE_SPECS, configured_tier_roles, named_role, HIGH_KEYS
 from .ui import application_banner_file
 from .events import EVENTS, EventPanelView, event_panel
 from .progression import ContractPanelView, PromotionPanelView, contract_panel_embed, promotion_panel_embed
@@ -47,6 +47,23 @@ async def provision(bot, guild, selected):
             roles[key] = role
             await bot.db.set_config(guild.id, **{key: role.id})
         await bot.db.set_config(guild.id, role_schema_version=3)
+        # Tier roles: attach existing roles by ID/name, otherwise create them.
+        tier_roles = {}
+        resolved_tiers = configured_tier_roles(guild)
+        tier_names = {'tiercheck': ('tiercheck', 0xFFD700), 1: ('Тир 1', 0xC0C0C0),
+                      2: ('Тир 2', 0xFFD700), 3: ('Тир 3', 0xFF69B4)}
+        for key, (name, color) in tier_names.items():
+            role = resolved_tiers.get(key)
+            if role is None:
+                role = await guild.create_role(name=name, colour=discord.Colour(color),
+                                               permissions=discord.Permissions.none(), reason='Skif: настройка тиров')
+            elif role < me.top_role:
+                role = await role.edit(colour=discord.Colour(color), reason='Skif: цвет тира')
+            tier_roles[key] = role
+        tier_cfg = {'tiercheck_role_id': tier_roles['tiercheck'].id}
+        for n in (1, 2, 3):
+            tier_cfg[f'tier_{n}_role_id'] = tier_roles[n].id
+        await bot.db.set_config(guild.id, **tier_cfg)
         # Higher staff roles may be above the bot; still order all editable ranks.
         ranked = [roles[k] for k in ROLE_SPECS if k != 'vacation_role_id' and roles[k] < me.top_role]
         if ranked:
@@ -233,6 +250,7 @@ async def provision(bot, guild, selected):
         result = base_embed('Сервер готов • Skif', 'Разделы и панели настроены. Повторный запуск обновляет эту структуру.')
         result.add_field(name='Начало работы', value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'case')), inline=False)
         result.add_field(name='Роли', value='\n'.join(f'{name}: {roles[key].mention}' for key, (name, _) in ROLE_SPECS.items()), inline=False)
+        result.add_field(name='Тиры', value='\n'.join((f'tiercheck: {tier_roles["tiercheck"].mention}', *(f'Тир {n}: {tier_roles[n].mention}' for n in (1,2,3)))), inline=False)
         result.add_field(name='Следующий шаг', value='Выдай роли нужным участникам. Чтобы использовать свои роли, повтори `/setup` и выбери их в параметрах. Права каналов, созданных ботом, обновляются автоматически. Права подключённых вручную каналов проверь отдельно.', inline=False)
         if warnings:
             result.add_field(name='Проверь', value='\n'.join(warnings)[:1024], inline=False)
