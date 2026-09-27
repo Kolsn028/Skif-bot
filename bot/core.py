@@ -70,7 +70,7 @@ class SkifBot(commands.Bot):
         await self.db.close(); await super().close()
 
     async def on_ready(self):
-        await self.change_presence(activity=discord.Game(name="Skif • заявки и личные дела"))
+        await self.change_presence(activity=discord.Game(name="Skif • заявки и МП"))
         print(f"✅ {self.user} online | guilds={len(self.guilds)}")
         for guild in self.guilds:
             await self.sync_guild_commands(guild)
@@ -85,23 +85,6 @@ class SkifBot(commands.Bot):
         for guild in self.guilds:
             try: await refresh_interface(self, guild)
             except Exception as exc: print(f"Interface refresh failed | guild={guild.id}: {exc}")
-        # Auto-provision once per server: only where the rank roles already exist.
-        from .provisioning import provision
-        for guild in self.guilds:
-            cfg = await self.db.get_config(guild.id)
-            if cfg.get('server_layout_version') == 10:
-                continue
-            if not all(any(r.name == name for r in guild.roles) for name in ('Овнер', 'Рекрут')):
-                continue
-            try:
-                result = await provision(self, guild, {})
-                issues = [f.value for f in result.fields if f.name == 'Проверь']
-                print(f'Skif layout v10 ready | guild={guild.id} | warnings={issues}')
-            except Exception as exc:
-                import traceback
-                traceback.print_exc()
-                print(f'Skif layout migration incomplete: {type(exc).__name__}: {exc}')
-
         for guild in self.guilds:
             cfg = await self.db.get_config(guild.id)
             if cfg.get('management_category_id'):
@@ -110,6 +93,26 @@ class SkifBot(commands.Bot):
                 except Exception as exc:
                     self.backups.errors[guild.id] = str(exc)
                     print(f'Discord backup initial save failed | guild={guild.id}: {exc}')
+
+    async def _auto_provision(self, guild):
+        """Создать роли, каналы и панели без /setup и сохранить их ID в конфиг.
+
+        Пропускает уже настроенные серверы (server_layout_version == 10) и серверы,
+        где боту не хватает прав — provision сам поднимет ValueError, а ручной /setup
+        после выдачи прав достроит структуру, ничего не удаляя.
+        """
+        cfg = await self.db.get_config(guild.id)
+        if cfg.get('server_layout_version') == 10:
+            return
+        from .provisioning import provision
+        try:
+            result = await provision(self, guild, {})
+            issues = [f.value for f in result.fields if f.name == 'Проверь']
+            print(f'Skif layout v10 ready | guild={guild.id} | warnings={issues}')
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            print(f'Skif layout migration incomplete: {type(exc).__name__}: {exc}')
 
     async def sync_guild_commands(self, guild):
         async with self.operation_locks[('commands', guild.id)]:
@@ -136,6 +139,7 @@ class SkifBot(commands.Bot):
 
     async def on_guild_join(self, guild):
         await self.sync_guild_commands(guild)
+        # # await self._auto_provision(guild)  # Личные дела отключены  # Личные дела отключены
 
     async def on_member_join(self, member):
         if member.bot:
@@ -181,34 +185,6 @@ class SkifBot(commands.Bot):
     def activity_points(self,cat):
         return {"capt":int(os.getenv("CAPT_POINTS","3")),"mp":int(os.getenv("MP_POINTS","2")),"msh":int(os.getenv("MSH_POINTS","2")),"training":int(os.getenv("TRAINING_POINTS","1")),"other":int(os.getenv("OTHER_POINTS","1")),"mcl":2,"vzm":2,"vzz":2,"contract":1}.get(cat,0)
 
-    async def ensure_personal_case(self,member):
-        async with self.operation_locks[("case", member.guild.id, member.id)]:
-            return await self._ensure_personal_case(member)
-
-    async def _ensure_personal_case(self,member):
-        from .enhancements import find_case, create_case_channel
-        recovered = await find_case(self, member)
-        if recovered: return recovered
-        ex=await self.db.get_case_by_member(member.guild.id,member.id)
-        if ex:
-            ch=member.guild.get_channel(ex["channel_id"])
-            if isinstance(ch,discord.TextChannel):
-                from .profiles import refresh_member
-                await refresh_member(self,member.guild,member.id,create=False)
-                return ch
-        c=await self.db.get_config(member.guild.id); cat=member.guild.get_channel(c.get("case_category_id") or 0); high=member.guild.get_role(c.get("high_staff_role_id") or 0)
-        if not isinstance(cat,discord.CategoryChannel) or not high: return None
-        ow={member.guild.default_role:discord.PermissionOverwrite(view_channel=False),member:discord.PermissionOverwrite(view_channel=True,send_messages=True,read_message_history=True,attach_files=True,embed_links=True),high:discord.PermissionOverwrite(view_channel=True,send_messages=True,read_message_history=True,attach_files=True,embed_links=True,manage_messages=True)}
-        for staff in configured_roles(member.guild, c, STAFF_KEYS):
-            ow[staff] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True)
-        if member.guild.me: ow[member.guild.me]=discord.PermissionOverwrite(view_channel=True,send_messages=True,read_message_history=True,manage_channels=True,manage_messages=True,attach_files=True,embed_links=True)
-        ch=await create_case_channel(self,member,cat,ow,safe_case_name(member.display_name,member.id))
-        await self.db.create_case(member.guild.id,member.id,ch.id,self.now_iso())
-        e=base_embed(f"📁 Личное дело • {member.display_name}",f"Владелец: {member.mention}\n\n1. Отправь сюда скрин/видео.\n2. Выбери тип активности.\n3. Рекрут, Хай или Дэп Овнер нажмёт **Засчитать** или **Отклонить**.\n\nВ статистику идут только подтверждённые отчёты.",0x6E56CF); e.set_thumbnail(url=member.display_avatar.url)
-        await ch.send(content=None,embed=e)
-        from .profiles import refresh_member
-        await refresh_member(self,member.guild,member.id,create=False)
-        return ch
 
     async def on_message(self,msg):
         from .enhancements import mark_staff_response

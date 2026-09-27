@@ -1,6 +1,13 @@
 """Explicit Skif ranks; role position alone never grants bot permissions."""
 import discord
 
+TIER_SPECS = {
+    'tiercheck_role_id': ('TierCheck', 0xFFD700),
+    'tier_1_role_id': ('Тир 1', 0xC0C0C0),
+    'tier_2_role_id': ('Тир 2', 0xFFD700),
+    'tier_3_role_id': ('Тир 3', 0xFF69B4),
+}
+
 ROLE_SPECS = {
     'leader_role_id': ('Овнер', 0xE53935),
     'dep_leader_role_id': ('Дэп Овнер', 0x2879E8),

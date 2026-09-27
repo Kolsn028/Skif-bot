@@ -59,22 +59,6 @@ def register_commands(bot):
     async def panel_vacation(i:discord.Interaction,channel:discord.TextChannel):
         m=await channel.send(embed=vacation_panel_embed(),view=VacationPanelView(bot)); await bot.db.set_config(i.guild.id,vacation_panel_channel_id=channel.id,vacation_panel_message_id=m.id); await i.response.send_message(f"✅ {m.jump_url}",ephemeral=True)
 
-    @bot.tree.command(name="panel_case",description="Отправить панель личных дел")
-    @admin_only()
-    async def panel_case(i:discord.Interaction,channel:discord.TextChannel):
-        m=await channel.send(embed=case_panel_embed(),view=CasePanelView(bot)); await bot.db.set_config(i.guild.id,case_panel_channel_id=channel.id,case_panel_message_id=m.id); await i.response.send_message(f"✅ {m.jump_url}",ephemeral=True)
-
-    @bot.tree.command(name="case_create",description="Создать/открыть личное дело участника")
-    async def case_create(i:discord.Interaction,member:discord.Member):
-        if not isinstance(i.user,discord.Member): return
-        if i.user.id!=member.id and not await bot.is_high_staff(i.user): return await i.response.send_message("⛔ Чужое дело может создавать Рекрут, Хай или Дэп Овнер.",ephemeral=True)
-        cfg = await bot.db.get_config(i.guild.id)
-        accepted = cfg.get("accepted_role_id")
-        if not await bot.is_family_member(member) and not await bot.can_manage(i.user):
-            return await i.response.send_message("Личное дело доступно участникам семьи.", ephemeral=True)
-        await i.response.defer(ephemeral=True,thinking=True); ch=await bot.ensure_personal_case(member)
-        await i.followup.send(f"📁 Личное дело: {ch.mention}" if ch else "⚠️ Проверь `/setup` и права Manage Channels.",ephemeral=True)
-
     @bot.tree.command(name="profile",description="Карточка активности участника")
     async def profile(i:discord.Interaction,member:discord.Member|None=None):
         from .profiles import open_profile
@@ -184,4 +168,3 @@ def register_commands(bot):
             if i.response.is_done(): await i.followup.send(text,ephemeral=True)
             else: await i.response.send_message(text,ephemeral=True)
         except discord.DiscordException: pass
-

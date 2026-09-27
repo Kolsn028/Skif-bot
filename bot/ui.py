@@ -9,7 +9,7 @@ try:
 except ValueError:
     EMBED_COLOR = 0xA82D40
 BANNER_URL = os.getenv('BANNER_URL', '').strip()
-FOOTER_TEXT = os.getenv('FOOTER_TEXT', 'SKIF • Семья. Уважение. Дисциплина.')
+FOOTER_TEXT = os.getenv('FOOTER_TEXT', 'SKIF Family')
 
 
 def base_embed(title, description='', color=None):
@@ -34,7 +34,7 @@ def application_banner_file():
 
 
 def application_panel_embed():
-    e = base_embed('Вступить в SKIF',
+    e = base_embed('Подать заявку',
         'Заполни короткую анкету — рекрутер рассмотрит её в приватной ветке.\n'
         'После принятия получишь роль **Academy**.\n\n'
         '**Готов? Нажми «Подать заявку».**')
@@ -62,4 +62,3 @@ def case_panel_embed():
 def activity_type_label(value):
     return {'capt':'⚔️ Капт', 'mp':'🎯 МП', 'msh':'🛡️ МШ', 'training':'🏋️ Тренировка',
             'mcl':'🟥 MCL', 'vzm':'🟩 VZM', 'vzz':'🟦 VZZ', 'contract':'🟠 Контракт', 'other':'📌 Другое', 'unclassified':'❔ Не выбран'}.get(value, value)
-

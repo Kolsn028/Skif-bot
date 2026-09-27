@@ -149,7 +149,7 @@ async def refresh_member(bot,guild,member_id,create=True):
     case=await bot.db.get_case_by_member(guild.id,member_id)
     if not case and create:
         if not await bot.is_family_member(member):return
-        await bot.ensure_personal_case(member)
+        # await bot.ensure_personal_case(member)  # Личные дела отключены
         return
     if not case:return
     ch=guild.get_channel(case['channel_id'])
@@ -177,4 +177,3 @@ async def refresh_member(bot,guild,member_id,create=True):
             await bot.db.set_profile_message(case['id'], msg.id)
         except discord.DiscordException as exc:
             print(f'Profile refresh failed member={member_id}: {type(exc).__name__}')
-

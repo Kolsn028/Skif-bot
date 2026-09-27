@@ -161,4 +161,3 @@ class ProgressReviewView(SafeView):
     async def approve(self, i, _): await self.decide(i, True)
     @discord.ui.button(label='Отклонить', style=discord.ButtonStyle.danger, custom_id='skif:progress:reject')
     async def reject(self, i, _): await self.decide(i, False)
-

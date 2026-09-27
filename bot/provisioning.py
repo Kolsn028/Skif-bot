@@ -78,7 +78,7 @@ async def provision(bot, guild, selected):
         staff = [*leaders, recruiter]
         family = [roles['family_role_id'], roles['accepted_role_id'], roles['main_role_id'], *staff]
         specs = [
-            ('events_category_id', 'SKIF • ПЛЮСЫ МП', family, []),
+            ('events_category_id', 'SKIF • МП', family, []),
             ('recruitment_category_id', 'SKIF • НАБОР', [guild.default_role], []),
             ('family_category_id', 'SKIF • СОСТАВ', family, []),
             ('management_category_id', 'SKIF • УПРАВЛЕНИЕ', staff, []),

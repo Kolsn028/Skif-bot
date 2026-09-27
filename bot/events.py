@@ -7,8 +7,8 @@ from .interactions import SafeView, SafeModal
 from .ui import base_embed
 from . import roster
 
-EVENTS = {'mcl': ('🟥', 'плюсы-mcl', 0xED4245), 'vzm': ('🟩', 'плюсы-vzm', 0x3BAA72),
-          'vzz': ('🟦', 'плюсы-vzz', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}
+EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', 0x3BAA72),
+          'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}
 
 
 

@@ -10,8 +10,6 @@ from .access import TIER_GUILD_ID as GUILD_ID, TIERCHECK_ROLE_ID, may_review_tie
 from .services.ranks import TIER_ROLES
 KINDS=('tier_1','tier_2','tier_3')
 
-TIERS_ENABLED = bool(GUILD_ID and TIERCHECK_ROLE_ID and all(TIER_ROLES.values()))
-
 async def can_review(bot,i):
     return isinstance(i.user, discord.Member) and may_review_tiers(i.user, i.guild_id)
 
@@ -38,7 +36,7 @@ class TierModal(SafeModal):
             existing=await self.bot.db.find_open_tier(i.guild_id, i.user.id)
             if existing:return await i.followup.send(f"У тебя уже есть заявка: <#{existing['thread_id']}>.",ephemeral=True)
             if (getattr(i.channel,'topic',None) or '')!=f'skif:tier:{self.tier}:{self.bot.user.id}:{i.guild_id}':raise ValueError('Открой актуальный канал тира.')
-            if not i.guild.get_role(TIER_ROLES[self.tier]):raise ValueError('Роль тира удалена. Сообщи Хай.')
+            if not i.guild.get_role(TIER_ROLES[self.tier]):raise ValueError('Роль тира удалена. Сообщи High.')
             reviewer_role=i.guild.get_role(TIERCHECK_ROLE_ID)
             if not reviewer_role:raise ValueError('Не найдена роль tiercheck.')
             thread=await private_thread(i.channel,i.user,[reviewer_role],f'тир-{self.tier}-{i.user.display_name}')
@@ -116,7 +114,7 @@ class TierReviewView(SafeView):
     async def reject(self,i,_):await i.response.send_modal(TierDecision(self.bot,False))
 
 async def install(bot,guild):
-    if not TIERS_ENABLED or guild.id!=GUILD_ID:return
+    if guild.id!=GUILD_ID:return
     cfg=await bot.db.get_config(guild.id);category=guild.get_channel(cfg.get('family_category_id') or 0)
     if not isinstance(category,discord.CategoryChannel):raise ValueError('Не найдена настроенная категория SKIF • СОСТАВ.')
     if any(not guild.get_role(rid) for rid in TIER_ROLES.values()):raise ValueError('Не найдены указанные роли тиров.')
@@ -142,7 +140,7 @@ async def install(bot,guild):
     await sync_reviewers(bot,guild)
 
 async def sync_reviewers(bot,guild,member=None):
-    if not TIERS_ENABLED or guild.id!=GUILD_ID:return
+    if guild.id!=GUILD_ID:return
     if not hasattr(bot,'_tier_sync_tasks'):bot._tier_sync_tasks={}
     key=(guild.id,member.id if member else None)
     existing=bot._tier_sync_tasks.get(key)
