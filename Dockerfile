@@ -9,7 +9,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN useradd --system --no-create-home skif
+RUN useradd --system --no-create-home skif \
+    && mkdir -p /app/data \
+    && chown -R skif:skif /app/data
+
 USER skif
 
 EXPOSE 8080
