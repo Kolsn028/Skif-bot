@@ -4,6 +4,7 @@ UI callbacks may hold their existing recruiter_decision lock. This service uses
 its own lock so callers outside a view also serialize approval/rejection safely.
 It never sends messages; a failed notification cannot undo a recorded decision.
 """
+
 import discord
 
 from ..access import may_decide_application
@@ -33,14 +34,13 @@ async def decide(bot, guild, actor, thread_id, *, accepted, reason=None, expecte
             if not applicant:
                 raise ApplicationDecisionError('Участник вышел с сервера. Решение не сохранено.')
             try:
-                await accept_member(applicant, cfg, f"Заявка #{app['id']}: принят в Skif")
+                await accept_member(applicant, cfg, f'Заявка #{app["id"]}: принят в Skif')
             except (discord.DiscordException, ValueError) as exc:
                 raise ApplicationDecisionError(
-                    'Не удалось завершить выдачу Skif + Academy и снятие Гость. '
-                    'Проверь роли и права бота, затем повтори приём. ' + str(exc)) from exc
+                    'Не удалось завершить выдачу Skif + Academy и снятие Гость. Проверь роли и права бота, затем повтори приём. ' + str(exc)
+                ) from exc
         status = 'accepted' if accepted else 'rejected'
-        saved = await bot.db.record_application_decision(
-            app['id'], guild.id, actor.id, status, bot.now_iso(), reason)
+        saved = await bot.db.record_application_decision(app['id'], guild.id, actor.id, status, bot.now_iso(), reason)
         if not saved:
             raise ApplicationDecisionError('Решение уже сохранено.')
         return {**app, 'status': status, 'handled_by': actor.id, 'rejection_reason': reason}

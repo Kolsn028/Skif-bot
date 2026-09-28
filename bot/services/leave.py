@@ -1,4 +1,5 @@
 """Resumable vacation role transitions; no UI or notification calls."""
+
 import json
 
 from ..access import HIGH_KEYS
@@ -14,8 +15,7 @@ async def begin_leave(bot, guild, vac):
         # Persist the exact leave role before Discord writes, so retries and a
         # later /setup change cannot remove a different role on return.
         marker = {'mode': 'role_only', 'leave_role_id': leave.id}
-        await bot.db.update_vacation(vac['id'], role_snapshot=json.dumps(marker),
-            added_novice=0, status='applying', updated_at=bot.now_iso())
+        await bot.db.update_vacation(vac['id'], role_snapshot=json.dumps(marker), added_novice=0, status='applying', updated_at=bot.now_iso())
         vac = await bot.db.get_vacation(vac['id'])
     snapshot = json.loads(vac['role_snapshot'])
     role_id = snapshot['leave_role_id'] if isinstance(snapshot, dict) and snapshot.get('mode') == 'role_only' else cfg.get('vacation_role_id')
@@ -45,22 +45,22 @@ async def restore_leave(bot, guild, vac):
             await member.remove_roles(leave, reason='Skif: возвращение из отпуска одобрено')
         await bot.db.update_vacation(vac['id'], status='returned', updated_at=bot.now_iso())
         return
-    saved_roles=[]
+    saved_roles = []
     for saved in json.loads(vac['role_snapshot']):
-        role=guild.get_role(saved['id'])
+        role = guild.get_role(saved['id'])
         if not role:
-            raise ValueError(f"Роль «{saved['name']}» удалена. Нужна ручная проверка руководства; восстановление не закрыто.")
+            raise ValueError(f'Роль «{saved["name"]}» удалена. Нужна ручная проверка руководства; восстановление не закрыто.')
         if role.managed or role >= guild.me.top_role or role.permissions.value != saved['permissions'] or role.id in {cfg.get(k) for k in HIGH_KEYS}:
             raise ValueError(f'Права или положение роли {role.name} изменились. Нужна ручная проверка перед возвратом.')
         saved_roles.append(role)
-    leave=guild.get_role(cfg.get('vacation_role_id') or 0)
-    novice=guild.get_role(cfg.get('accepted_role_id') or 0)
-    cleanup=[r for r in [leave, novice if vac['added_novice'] else None] if r]
-    if any(r >= guild.me.top_role for r in cleanup): raise ValueError('Проверь положение роли бота.')
-    await bot.db.update_vacation(vac['id'],status='restoring',updated_at=bot.now_iso())
+    leave = guild.get_role(cfg.get('vacation_role_id') or 0)
+    novice = guild.get_role(cfg.get('accepted_role_id') or 0)
+    cleanup = [r for r in [leave, novice if vac['added_novice'] else None] if r]
+    if any(r >= guild.me.top_role for r in cleanup):
+        raise ValueError('Проверь положение роли бота.')
+    await bot.db.update_vacation(vac['id'], status='restoring', updated_at=bot.now_iso())
     for role in saved_roles:
-        await member.add_roles(role,reason='Skif: восстановление сохранённых ролей')
+        await member.add_roles(role, reason='Skif: восстановление сохранённых ролей')
     for role in cleanup:
-        await member.remove_roles(role,reason='Skif: возвращение из отпуска одобрено')
-    await bot.db.update_vacation(vac['id'],status='returned',updated_at=bot.now_iso())
-
+        await member.remove_roles(role, reason='Skif: возвращение из отпуска одобрено')
+    await bot.db.update_vacation(vac['id'], status='returned', updated_at=bot.now_iso())
