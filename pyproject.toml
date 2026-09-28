@@ -28,7 +28,22 @@ ignore = [
     "RUF003",
     "E701",
     "E702",
+    "E402",  # поздние импорты в модулях сделаны намеренно
+    "I001",
+    "C408",
+    "RUF005",
+    "RUF059",
+    "TRY004",
+    "TRY300",
+    "TRY301",
+    "BLE001",
+    "DTZ007",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"bot/roles.py" = ["F401"]  # совместимые реэкспорты из bot.access
+"bot/leave.py" = ["F401"]
+"bot/roster.py" = ["F401"]
 
 [tool.ruff.format]
 quote-style = "single"
