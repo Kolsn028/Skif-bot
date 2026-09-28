@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
-MSK = timezone(timedelta(hours=3), name="MSK")
+MSK = timezone(timedelta(hours=3), name='MSK')
 
 
 def msk_today() -> date:

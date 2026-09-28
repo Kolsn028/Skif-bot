@@ -1,4 +1,5 @@
 """Per-guild Discord snapshots. Only bot-authored, checksummed JSON is restored."""
+
 import asyncio
 import gzip
 import hashlib
@@ -21,9 +22,19 @@ def _checksum_from_filename(filename: str) -> str | None:
     match = BACKUP_FILENAME_RE.match(filename)
     return match.group(1) if match else None
 
-TABLES = ('guild_config', 'applications', 'recruiter_stats', 'vacations',
-          'personal_cases', 'family_events', 'event_signups', 'progress_requests',
-          'activity_submissions', 'audit_actions')
+
+TABLES = (
+    'guild_config',
+    'applications',
+    'recruiter_stats',
+    'vacations',
+    'personal_cases',
+    'family_events',
+    'event_signups',
+    'progress_requests',
+    'activity_submissions',
+    'audit_actions',
+)
 MAX_RAW = 64 * 1024 * 1024
 MAX_FILE = 8 * 1024 * 1024
 AUTO_SAVE_INTERVAL = 60
@@ -43,8 +54,7 @@ async def snapshot(db, guild_id):
 
 
 def encode(payload):
-    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                     separators=(',', ':')).encode('utf-8')
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
     if len(raw) > MAX_RAW:
         raise ValueError('Резервная копия превысила лимит 64 МБ.')
     compressed = gzip.compress(raw, mtime=0)
@@ -95,18 +105,16 @@ async def restore_payload(db, payload):
                         raise ValueError(f'Несовместимые поля таблицы {table}.')
                     names = list(row)
                     await db.conn.execute(
-                        f'INSERT INTO {table} ({",".join(names)}) VALUES ({",".join("?" for _ in names)})',
-                        [row[name] for name in names])
+                        f'INSERT INTO {table} ({",".join(names)}) VALUES ({",".join("?" for _ in names)})', [row[name] for name in names]
+                    )
             for item in payload.get('sequences', []):
                 if item['name'] not in TABLES or not isinstance(item['seq'], int) or item['seq'] < 0:
                     raise ValueError('Неверный счётчик записей.')
                 row = await db._one('SELECT seq FROM sqlite_sequence WHERE name=?', (item['name'],))
                 if row:
-                    await db.conn.execute('UPDATE sqlite_sequence SET seq=MAX(seq,?) WHERE name=?',
-                                          (item['seq'], item['name']))
+                    await db.conn.execute('UPDATE sqlite_sequence SET seq=MAX(seq,?) WHERE name=?', (item['seq'], item['name']))
                 else:
-                    await db.conn.execute('INSERT INTO sqlite_sequence(name,seq) VALUES (?,?)',
-                                          (item['name'], item['seq']))
+                    await db.conn.execute('INSERT INTO sqlite_sequence(name,seq) VALUES (?,?)', (item['name'], item['seq']))
             await db.conn.commit()
         except Exception:
             await db.conn.rollback()
@@ -117,9 +125,15 @@ async def restore_payload(db, payload):
 
 def change_lines(previous, current):
     lines = []
-    labels = {'applications': 'Заявка', 'vacations': 'Отдых', 'activity_submissions': 'Отчёт',
-              'progress_requests': 'Контракт/повышение', 'family_events': 'МП',
-              'personal_cases': 'Личное дело', 'audit_actions': 'Действие'}
+    labels = {
+        'applications': 'Заявка',
+        'vacations': 'Отдых',
+        'activity_submissions': 'Отчёт',
+        'progress_requests': 'Контракт/повышение',
+        'family_events': 'МП',
+        'personal_cases': 'Личное дело',
+        'audit_actions': 'Действие',
+    }
     old_tables = previous['tables'] if previous else {}
     for table, label in labels.items():
         old = {r['id']: r for r in old_tables.get(table, [])}
@@ -129,9 +143,9 @@ def change_lines(previous, current):
             actor = row.get('handled_by') or row.get('actor_id') or row.get('creator_id')
             user = row.get('member_id') or row.get('applicant_id')
             status = row.get('status') or row.get('action') or 'обновлено'
-            lines.append(f'{label} #{row["id"]}: {status}' +
-                         (f' · участник <@{user}>' if user else '') +
-                         (f' · ответственный <@{actor}>' if actor else ''))
+            lines.append(
+                f'{label} #{row["id"]}: {status}' + (f' · участник <@{user}>' if user else '') + (f' · ответственный <@{actor}>' if actor else '')
+            )
     old_signups = {(r['event_id'], r['member_id']): r for r in old_tables.get('event_signups', [])}
     for row in current['tables']['event_signups']:
         if old_signups.get((row['event_id'], row['member_id'])) != row:
@@ -187,8 +201,7 @@ class DiscordBackups:
             if await self.bot.db._one('SELECT guild_id FROM guild_config WHERE guild_id=?', (guild.id,)):
                 continue
             channels = await guild.fetch_channels()
-            matches = [ch for ch in channels if isinstance(ch, discord.TextChannel)
-                       and ch.topic == self.topic(guild.id, 'backup')]
+            matches = [ch for ch in channels if isinstance(ch, discord.TextChannel) and ch.topic == self.topic(guild.id, 'backup')]
             if len(matches) > 1:
                 raise RuntimeError(f'Duplicate backup channels for guild {guild.id}')
             if str(guild.id) in expected and (not matches or matches[0].id != int(expected[str(guild.id)])):
@@ -233,17 +246,20 @@ class DiscordBackups:
         roles = configured_roles(guild, cfg, HIGH_KEYS)
         if not isinstance(category, discord.CategoryChannel) or len(roles) != len(HIGH_KEYS):
             raise ValueError('Для логов нужны настроенные Хай, Дэп Овнер, Овнер и категория управления.')
-        ow = {guild.default_role: discord.PermissionOverwrite(view_channel=False),
-              guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True,
-                  attach_files=True, embed_links=True, read_message_history=True)}
+        ow = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            guild.me: discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, attach_files=True, embed_links=True, read_message_history=True
+            ),
+        }
         for role in roles:
-            ow[role] = discord.PermissionOverwrite(view_channel=True, send_messages=False,
-                read_message_history=True, create_public_threads=False, create_private_threads=False)
+            ow[role] = discord.PermissionOverwrite(
+                view_channel=True, send_messages=False, read_message_history=True, create_public_threads=False, create_private_threads=False
+            )
         channels = await guild.fetch_channels()
         result = {}
         for kind, name in (('backup', 'данные-бота'), ('logs', 'логи-бота')):
-            matches = [ch for ch in channels if isinstance(ch, discord.TextChannel)
-                       and ch.topic == self.topic(guild.id, kind)]
+            matches = [ch for ch in channels if isinstance(ch, discord.TextChannel) and ch.topic == self.topic(guild.id, kind)]
             if len(matches) > 1:
                 raise ValueError('Найдены дубликаты служебных каналов.')
             if matches:
@@ -251,8 +267,9 @@ class DiscordBackups:
                 if channel.category_id != category.id or channel.overwrites != ow:
                     await channel.edit(category=category, overwrites=ow, reason='Skif: доступ Хай и выше')
             else:
-                channel = await guild.create_text_channel(name, category=category,
-                    topic=self.topic(guild.id, kind), overwrites=ow, reason='Skif: хранение данных')
+                channel = await guild.create_text_channel(
+                    name, category=category, topic=self.topic(guild.id, kind), overwrites=ow, reason='Skif: хранение данных'
+                )
             result[kind] = channel
         return result
 
@@ -260,12 +277,14 @@ class DiscordBackups:
         connection = self.bot.db.conn
         original = connection.commit
         previous = connection.total_changes
+
         async def commit():
             nonlocal previous
             await original()
             if connection.total_changes != previous:
                 previous = connection.total_changes
                 self.wake.set()
+
         connection.commit = commit
         self.task = asyncio.create_task(self.worker())
 
@@ -287,8 +306,8 @@ class DiscordBackups:
                 return
             channels = await self.ensure_channels(guild)
             message = await channels['backup'].send(
-                file=discord.File(io.BytesIO(blob), filename=f'skif-state-{checksum}.json.gz'),
-                allowed_mentions=discord.AllowedMentions.none())
+                file=discord.File(io.BytesIO(blob), filename=f'skif-state-{checksum}.json.gz'), allowed_mentions=discord.AllowedMentions.none()
+            )
             if not message.attachments or hashlib.sha256(await message.attachments[0].read()).hexdigest() != checksum:
                 raise RuntimeError('Не удалось подтвердить сохранённую копию.')
             lines = change_lines(self.last.get(guild.id), payload)

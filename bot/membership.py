@@ -1,12 +1,12 @@
 """Separate guest onboarding from family membership and application access."""
+
 import discord
 
 from .roles import application_recruiters
 
 
 def membership_roles(guild, cfg):
-    roles = [guild.get_role(cfg.get(k) or 0) for k in
-             ('guest_role_id', 'family_role_id', 'accepted_role_id')]
+    roles = [guild.get_role(cfg.get(k) or 0) for k in ('guest_role_id', 'family_role_id', 'accepted_role_id')]
     if any(r is None or r.managed or r.is_default() or r >= guild.me.top_role for r in roles):
         raise ValueError('В /setup выбери Гость, Skif и Academy; подними роль бота выше них.')
     if len({r.id for r in roles}) != 3:

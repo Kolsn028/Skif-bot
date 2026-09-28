@@ -1,4 +1,5 @@
 """Repeatable server setup. Existing configured channels are never deleted."""
+
 import discord
 from .ui import base_embed, application_panel_embed, vacation_panel_embed
 from .views import ApplicationPanelView, VacationPanelView
@@ -6,13 +7,31 @@ from .views import ApplicationPanelView, VacationPanelView
 from .roles import ROLE_SPECS, configured_tier_roles, named_role
 from .ui import application_banner_file
 from .events import EVENTS, EventPanelView, event_panel
-from .progression import ContractPanelView, PromotionPanelView, GreenPanelView, WarnPanelView, contract_panel_embed, promotion_panel_embed, green_panel_embed, warn_panel_embed
+from .progression import (
+    ContractPanelView,
+    PromotionPanelView,
+    GreenPanelView,
+    WarnPanelView,
+    contract_panel_embed,
+    promotion_panel_embed,
+    green_panel_embed,
+    warn_panel_embed,
+)
+
 
 async def provision(bot, guild, selected):
     async with bot.operation_locks[('setup', guild.id)]:
         me = guild.me
-        required = ('manage_channels', 'manage_roles', 'create_private_threads', 'manage_threads',
-                    'send_messages', 'send_messages_in_threads', 'embed_links', 'read_message_history')
+        required = (
+            'manage_channels',
+            'manage_roles',
+            'create_private_threads',
+            'manage_threads',
+            'send_messages',
+            'send_messages_in_threads',
+            'embed_links',
+            'read_message_history',
+        )
         missing = [p for p in required if not getattr(me.guild_permissions, p)]
         if missing:
             raise ValueError('Боту не хватает прав: ' + ', '.join(missing))
@@ -37,8 +56,9 @@ async def provision(bot, guild, selected):
         for key, (name, color) in ROLE_SPECS.items():
             role = candidates[key]
             if role is None:
-                role = await guild.create_role(name=name, colour=discord.Colour(color),
-                                               permissions=discord.Permissions.none(), reason='Skif: настройка')
+                role = await guild.create_role(
+                    name=name, colour=discord.Colour(color), permissions=discord.Permissions.none(), reason='Skif: настройка'
+                )
             elif key in ('leader_role_id', 'dep_leader_role_id'):
                 if role < me.top_role:
                     role = await role.edit(colour=discord.Colour(color), reason='Skif: цвет ранга')
@@ -50,13 +70,13 @@ async def provision(bot, guild, selected):
         # Tier roles: attach existing roles by ID/name, otherwise create them.
         tier_roles = {}
         resolved_tiers = configured_tier_roles(guild)
-        tier_names = {'tiercheck': ('tiercheck', 0xFFD700), 1: ('Тир 1', 0xC0C0C0),
-                      2: ('Тир 2', 0xFFD700), 3: ('Тир 3', 0xFF69B4)}
+        tier_names = {'tiercheck': ('tiercheck', 0xFFD700), 1: ('Тир 1', 0xC0C0C0), 2: ('Тир 2', 0xFFD700), 3: ('Тир 3', 0xFF69B4)}
         for key, (name, color) in tier_names.items():
             role = resolved_tiers.get(key)
             if role is None:
-                role = await guild.create_role(name=name, colour=discord.Colour(color),
-                                               permissions=discord.Permissions.none(), reason='Skif: настройка тиров')
+                role = await guild.create_role(
+                    name=name, colour=discord.Colour(color), permissions=discord.Permissions.none(), reason='Skif: настройка тиров'
+                )
             elif role < me.top_role:
                 role = await role.edit(colour=discord.Colour(color), reason='Skif: цвет тира')
             tier_roles[key] = role
@@ -71,20 +91,40 @@ async def provision(bot, guild, selected):
             if len(set(positions)) == len(positions):
                 await guild.edit_role_positions(positions=dict(zip(ranked, positions, strict=False)), reason='Skif: порядок рангов')
 
-
         def overwrites(audience, write=False, reviewers=()):
-            ow = {guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                  me: discord.PermissionOverwrite(view_channel=True, send_messages=True, embed_links=True,
-                      attach_files=True, read_message_history=True, manage_channels=True, manage_threads=True,
-                      create_private_threads=True, send_messages_in_threads=True)}
+            ow = {
+                guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                me: discord.PermissionOverwrite(
+                    view_channel=True,
+                    send_messages=True,
+                    embed_links=True,
+                    attach_files=True,
+                    read_message_history=True,
+                    manage_channels=True,
+                    manage_threads=True,
+                    create_private_threads=True,
+                    send_messages_in_threads=True,
+                ),
+            }
             for role in audience:
-                ow[role] = discord.PermissionOverwrite(view_channel=True, send_messages=write,
-                    read_message_history=True, send_messages_in_threads=True, attach_files=True,
-                    create_public_threads=False, create_private_threads=False)
+                ow[role] = discord.PermissionOverwrite(
+                    view_channel=True,
+                    send_messages=write,
+                    read_message_history=True,
+                    send_messages_in_threads=True,
+                    attach_files=True,
+                    create_public_threads=False,
+                    create_private_threads=False,
+                )
             for role in reviewers:
-                ow[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True,
-                    read_message_history=True, send_messages_in_threads=True, attach_files=True,
-                    manage_threads=True)
+                ow[role] = discord.PermissionOverwrite(
+                    view_channel=True,
+                    send_messages=True,
+                    read_message_history=True,
+                    send_messages_in_threads=True,
+                    attach_files=True,
+                    manage_threads=True,
+                )
             return ow
 
         recruiter = roles['recruiter_role_id']
@@ -117,21 +157,31 @@ async def provision(bot, guild, selected):
             cats[key] = channel
 
         channels = {}
+
         async def channel(key, name, cat, audience, reviewers=(), voice=False):
             ch = guild.get_channel(cfg.get(key) or 0)
             cls = discord.VoiceChannel if voice else discord.TextChannel
             if not isinstance(ch, cls):
-                matches = [c for c in guild.channels if isinstance(c, cls) and
-                           ((voice and c.name in ((name, 'Обзвон • Skif') if key == 'interview_voice_channel_id' else (name,)) and c.category_id == cats[cat].id) or
-                            (not voice and c.topic == f'Skif • {key} • управляется ботом'))]
+                matches = [
+                    c
+                    for c in guild.channels
+                    if isinstance(c, cls)
+                    and (
+                        (
+                            voice
+                            and c.name in ((name, 'Обзвон • Skif') if key == 'interview_voice_channel_id' else (name,))
+                            and c.category_id == cats[cat].id
+                        )
+                        or (not voice and c.topic == f'Skif • {key} • управляется ботом')
+                    )
+                ]
                 if len(matches) > 1:
                     raise ValueError(f'Несколько каналов {name}: проверь дубликаты.')
                 ch = matches[0] if matches else None
             if not isinstance(ch, cls):
                 method = guild.create_voice_channel if voice else guild.create_text_channel
                 kw = {} if voice else {'topic': f'Skif • {key} • управляется ботом'}
-                ch = await method(name, category=cats[cat], overwrites=overwrites(audience, reviewers=reviewers),
-                                  reason='Skif: настройка', **kw)
+                ch = await method(name, category=cats[cat], overwrites=overwrites(audience, reviewers=reviewers), reason='Skif: настройка', **kw)
                 await bot.db.set_config(guild.id, **{key: ch.id})
             elif not voice and ch.topic == f'Skif • {key} • управляется ботом':
                 await ch.edit(overwrites=overwrites(audience, reviewers=reviewers), reason='Skif: обновление ролей')
@@ -144,6 +194,7 @@ async def provision(bot, guild, selected):
         await channel('application_panel_channel_id', '📩・заявка-в-семью', 'recruitment_category_id', [guild.default_role])
         parent = await channel('applications_parent_channel_id', '📋・заявки-рекрутам', 'recruitment_category_id', [guild.default_role])
         from .membership import secure_application_parent, sync_application_members
+
         await secure_application_parent(parent)
         for thread in guild.threads:
             if thread.parent_id == parent.id:
@@ -171,12 +222,14 @@ async def provision(bot, guild, selected):
         for kind, (emoji, name, _color) in EVENTS.items():
             await channel(f'{kind}_panel_channel_id', f'{emoji}・{name}', 'events_category_id', family)
 
-        panels = [('application', application_panel_embed, ApplicationPanelView),
-                  ('vacation', vacation_panel_embed, VacationPanelView),
-                  ('contract', contract_panel_embed, ContractPanelView),
-                  ('promotion', promotion_panel_embed, PromotionPanelView),
-                  ('green', green_panel_embed, GreenPanelView),
-                  ('warn', warn_panel_embed, WarnPanelView)]
+        panels = [
+            ('application', application_panel_embed, ApplicationPanelView),
+            ('vacation', vacation_panel_embed, VacationPanelView),
+            ('contract', contract_panel_embed, ContractPanelView),
+            ('promotion', promotion_panel_embed, PromotionPanelView),
+            ('green', green_panel_embed, GreenPanelView),
+            ('warn', warn_panel_embed, WarnPanelView),
+        ]
         panels += [(kind, lambda k=kind: event_panel(k), EventPanelView) for kind in EVENTS]
         cfg = await bot.db.get_config(guild.id)
         for kind, make_embed, view in panels:
@@ -194,8 +247,9 @@ async def provision(bot, guild, selected):
             if not message:
                 custom_id = 'skif:event:open' if kind in EVENTS else f'skif:{kind}:open'
                 async for old in ch.history(limit=100):
-                    if old.author.id == bot.user.id and any(getattr(child, 'custom_id', None) == custom_id
-                        for row in old.components for child in getattr(row, 'children', [])):
+                    if old.author.id == bot.user.id and any(
+                        getattr(child, 'custom_id', None) == custom_id for row in old.components for child in getattr(row, 'children', [])
+                    ):
                         message = old
                         break
             if message and message.author.id == bot.user.id:
@@ -218,30 +272,44 @@ async def provision(bot, guild, selected):
                     if not member.bot:
                         await thread.add_user(member)
         from .membership import repair_members
+
         repaired = await repair_members(bot, guild, roles)
         print(f'Membership repaired | guild={guild.id} | members={repaired}')
         # Skif is the next family rank, with exactly Academy's permissions.
         fresh_roles = {r.id: r for r in await guild.fetch_roles()}
         novice = fresh_roles.get(roles['accepted_role_id'].id, roles['accepted_role_id'])
         main = fresh_roles.get(roles['main_role_id'].id, roles['main_role_id'])
-        await main.edit(permissions=novice.permissions, colour=novice.colour,
-                        reason='Skif: роль Skif имеет права Academy')
+        await main.edit(permissions=novice.permissions, colour=novice.colour, reason='Skif: роль Skif имеет права Academy')
         if main.position <= novice.position:
-            await guild.edit_role_positions(positions={main: novice.position, novice: main.position},
-                                            reason='Skif: Skif выше Academy в доступных позициях')
+            await guild.edit_role_positions(
+                positions={main: novice.position, novice: main.position}, reason='Skif: Skif выше Academy в доступных позициях'
+            )
         for ch in guild.channels:
             if novice in ch.overwrites:
                 ow = dict(ch.overwrites)
                 ow[main] = ch.overwrites_for(novice)
                 await ch.edit(overwrites=ow, reason='Skif: равный доступ Skif и Academy')
         result = base_embed('Сервер готов • Skif', 'Разделы и панели настроены. Повторный запуск обновляет эту структуру.')
-        result.add_field(name='Начало работы', value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'green', 'warn')), inline=False)
+        result.add_field(
+            name='Начало работы',
+            value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'green', 'warn')),
+            inline=False,
+        )
         result.add_field(name='Роли', value='\n'.join(f'{name}: {roles[key].mention}' for key, (name, _) in ROLE_SPECS.items()), inline=False)
-        result.add_field(name='Тиры', value='\n'.join((f'tiercheck: {tier_roles["tiercheck"].mention}', *(f'Тир {n}: {tier_roles[n].mention}' for n in (1,2,3)))), inline=False)
-        result.add_field(name='Следующий шаг', value='Выдай роли нужным участникам. Чтобы использовать свои роли, повтори `/setup` и выбери их в параметрах. Права каналов, созданных ботом, обновляются автоматически. Права подключённых вручную каналов проверь отдельно.', inline=False)
+        result.add_field(
+            name='Тиры',
+            value='\n'.join((f'tiercheck: {tier_roles["tiercheck"].mention}', *(f'Тир {n}: {tier_roles[n].mention}' for n in (1, 2, 3)))),
+            inline=False,
+        )
+        result.add_field(
+            name='Следующий шаг',
+            value='Выдай роли нужным участникам. Чтобы использовать свои роли, повтори `/setup` и выбери их в параметрах. Права каналов, созданных ботом, обновляются автоматически. Права подключённых вручную каналов проверь отдельно.',
+            inline=False,
+        )
         if warnings:
             result.add_field(name='Проверь', value='\n'.join(warnings)[:1024], inline=False)
         from .migration_v9 import migrate_guild
-        await migrate_guild(bot,guild)
+
+        await migrate_guild(bot, guild)
         await bot.db.set_config(guild.id, server_layout_version=10)
         return result

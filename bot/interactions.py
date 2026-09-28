@@ -5,12 +5,13 @@ import discord
 
 log = logging.getLogger(__name__)
 
+
 async def report_error(interaction, error):
     log.error('Discord interaction failed', exc_info=(type(error), error, error.__traceback__))
     if isinstance(error, discord.Forbidden):
         message = 'Не хватает прав. Нужны просмотр канала, отправка сообщений, создание приватных веток и управление ветками. Проверь также положение роли бота.'
     elif isinstance(error, discord.NotFound):
-        message = "Сообщение или канал удалён. Открой актуальную панель; если её нет — сообщи Хай."
+        message = 'Сообщение или канал удалён. Открой актуальную панель; если её нет — сообщи Хай.'
     elif isinstance(error, ValueError):
         message = str(error)
     else:
@@ -23,9 +24,11 @@ async def report_error(interaction, error):
     except discord.NotFound:
         log.warning('Interaction expired before error could be delivered')
 
+
 class SafeModal(discord.ui.Modal):
     async def on_error(self, interaction, error):
         await report_error(interaction, error)
+
 
 class SafeView(discord.ui.View):
     async def on_error(self, interaction, error, item):
@@ -37,31 +40,51 @@ def serialized(kind, by_user=False):
         @functools.wraps(func)
         async def wrapped(self, interaction, *args, **kwargs):
             target = interaction.user.id if by_user else interaction.channel_id
-            lock=self.bot.operation_locks[(kind, interaction.guild_id, target)]
+            lock = self.bot.operation_locks[(kind, interaction.guild_id, target)]
             if lock.locked():
-                return await interaction.response.send_message('Действие уже выполняется. Дождись результата и повтори при необходимости.',ephemeral=True)
+                return await interaction.response.send_message(
+                    'Действие уже выполняется. Дождись результата и повтори при необходимости.', ephemeral=True
+                )
             async with lock:
                 return await func(self, interaction, *args, **kwargs)
+
         return wrapped
+
     return decorate
+
 
 async def private_thread(parent, member, roles, name, *, reviewers=None):
     """No public anchor: application text stays inside the private thread."""
     perms = parent.permissions_for(parent.guild.me)
-    required = ('view_channel', 'send_messages', 'create_private_threads', 'manage_threads',
-                'send_messages_in_threads', 'read_message_history', 'embed_links')
+    required = (
+        'view_channel',
+        'send_messages',
+        'create_private_threads',
+        'manage_threads',
+        'send_messages_in_threads',
+        'read_message_history',
+        'embed_links',
+    )
     if any(not getattr(perms, key) for key in required):
-        raise ValueError('Проверь права бота в канале заявок: просмотр, сообщения, Embed Links, история, создание приватных веток и управление ветками.')
+        raise ValueError(
+            'Проверь права бота в канале заявок: просмотр, сообщения, Embed Links, история, создание приватных веток и управление ветками.'
+        )
     if not parent.permissions_for(member).view_channel:
-        raise ValueError('У участника нет доступа к родительскому каналу заявок. Администратор должен открыть просмотр этого канала; сами заявки останутся в приватных ветках.')
+        raise ValueError(
+            'У участника нет доступа к родительскому каналу заявок. Администратор должен открыть просмотр этого канала; сами заявки останутся в приватных ветках.'
+        )
     if not parent.guild.chunked:
         await parent.guild.chunk(cache=True)
-    thread = await parent.create_thread(name=name[:100], type=discord.ChannelType.private_thread,
-                                       invitable=False, auto_archive_duration=1440, reason='Skif: приватная заявка')
+    thread = await parent.create_thread(
+        name=name[:100], type=discord.ChannelType.private_thread, invitable=False, auto_archive_duration=1440, reason='Skif: приватная заявка'
+    )
     try:
         await thread.add_user(member)
-        invited = ({m.id: m for m in reviewers if not m.bot} if reviewers is not None else
-                   {m.id: m for role in roles if role for m in role.members if not m.bot})
+        invited = (
+            {m.id: m for m in reviewers if not m.bot}
+            if reviewers is not None
+            else {m.id: m for role in roles if role for m in role.members if not m.bot}
+        )
         for reviewer in invited.values():
             if reviewer.id != member.id:
                 await thread.add_user(reviewer)
@@ -70,4 +93,3 @@ async def private_thread(parent, member, roles, name, *, reviewers=None):
         await thread.delete(reason='Skif: не удалось добавить участников')
         raise
     return thread
-

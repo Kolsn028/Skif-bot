@@ -13,8 +13,7 @@ FOOTER_TEXT = os.getenv('FOOTER_TEXT', 'SKIF Family')
 
 
 def base_embed(title, description='', color=None):
-    e = discord.Embed(title=title, description=description, color=color if color is not None else EMBED_COLOR,
-                      timestamp=datetime.now(timezone.utc))
+    e = discord.Embed(title=title, description=description, color=color if color is not None else EMBED_COLOR, timestamp=datetime.now(timezone.utc))
     e.set_author(name=FAMILY_NAME)
     e.set_footer(text=FOOTER_TEXT)
     return e
@@ -34,22 +33,42 @@ def application_banner_file():
 
 
 def application_panel_embed():
-    e = base_embed('Подать заявку',
+    e = base_embed(
+        'Подать заявку',
         'Заполни короткую анкету — рекрутер рассмотрит её в приватной ветке.\n'
         'После принятия получишь роль **Academy**.\n\n'
-        '**Готов? Нажми «Подать заявку».**')
+        '**Готов? Нажми «Подать заявку».**',
+    )
     e.set_image(url='attachment://skif-banner.png')
     return e
 
 
 def vacation_panel_embed():
-    return panel('ВРЕМЯ НА ОТДЫХ', 'Нужна пауза? Предупреди руководство — сохрани порядок в составе.', [
-        ('01  /  ОСТАВЬ ЗАЯВКУ', 'Укажи причину и срок: **от 1 до 60 дней**.'),
-        ('02  /  ДОЖДИСЬ РЕШЕНИЯ', 'Бот создаст отдельную приватную ветку для тебя и руководства.'),
-        ('03  /  ВОЗВРАЩАЙСЯ В СТРОЙ', 'Добавляется только роль Отдых. Остальные роли сохраняются. Для возврата нажми «Вернуться из отпуска»: причина и комментарий, затем одобрение Хай и выше.'),
-    ], 0xC69B59)
+    return panel(
+        'ВРЕМЯ НА ОТДЫХ',
+        'Нужна пауза? Предупреди руководство — сохрани порядок в составе.',
+        [
+            ('01  /  ОСТАВЬ ЗАЯВКУ', 'Укажи причину и срок: **от 1 до 60 дней**.'),
+            ('02  /  ДОЖДИСЬ РЕШЕНИЯ', 'Бот создаст отдельную приватную ветку для тебя и руководства.'),
+            (
+                '03  /  ВОЗВРАЩАЙСЯ В СТРОЙ',
+                'Добавляется только роль Отдых. Остальные роли сохраняются. Для возврата нажми «Вернуться из отпуска»: причина и комментарий, затем одобрение Хай и выше.',
+            ),
+        ],
+        0xC69B59,
+    )
 
 
 def activity_type_label(value):
-    return {'capt':'⚔️ Капт', 'mp':'🎯 МП', 'msh':'🛡️ МШ', 'training':'🏋️ Тренировка',
-            'mcl':'🟥 MCL', 'vzm':'🟩 VZM', 'vzz':'🟦 VZZ', 'contract':'🟠 Контракт', 'other':'📌 Другое', 'unclassified':'❔ Не выбран'}.get(value, value)
+    return {
+        'capt': '⚔️ Капт',
+        'mp': '🎯 МП',
+        'msh': '🛡️ МШ',
+        'training': '🏋️ Тренировка',
+        'mcl': '🟥 MCL',
+        'vzm': '🟩 VZM',
+        'vzz': '🟦 VZZ',
+        'contract': '🟠 Контракт',
+        'other': '📌 Другое',
+        'unclassified': '❔ Не выбран',
+    }.get(value, value)

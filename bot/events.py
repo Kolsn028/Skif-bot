@@ -1,4 +1,5 @@
 """Family event signups with staff-only creation and verified attendance."""
+
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -9,22 +10,22 @@ from .interactions import SafeModal, SafeView
 from .performance import coalesced_panel, edit_if_changed
 from .ui import base_embed
 
-EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', 0x3BAA72),
-          'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}
+EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', 0x3BAA72), 'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}
 
 
-
-def parse_time(value,day=None,now=None):
-    zone=timezone(timedelta(hours=3));now=(now or datetime.now(timezone.utc)).astimezone(zone)
+def parse_time(value, day=None, now=None):
+    zone = timezone(timedelta(hours=3))
+    now = (now or datetime.now(timezone.utc)).astimezone(zone)
     try:
         if day is None:
-            dt=datetime.strptime(value.strip(), '%d.%m.%Y %H:%M').replace(tzinfo=zone)
+            dt = datetime.strptime(value.strip(), '%d.%m.%Y %H:%M').replace(tzinfo=zone)
         else:
-            clock=datetime.strptime(value.strip(), '%H:%M').time()
-            dt=datetime.combine(day,clock,tzinfo=zone)
+            clock = datetime.strptime(value.strip(), '%H:%M').time()
+            dt = datetime.combine(day, clock, tzinfo=zone)
     except ValueError:
         raise ValueError('Укажи время ЧЧ:ММ, например 20:00, или полную дату в режиме «Другая дата». Время московское.') from None
-    if dt<=now:raise ValueError('Это время уже прошло. Выбери другое время или завтра.')
+    if dt <= now:
+        raise ValueError('Это время уже прошло. Выбери другое время или завтра.')
     return int(dt.timestamp())
 
 
@@ -38,257 +39,359 @@ async def event_row(bot, guild_id, message_id):
 
 async def card(db, row):
     people = await db.event_participants(row['id'])
-    e = base_embed(('🟢 ЗАПИСЬ ОТКРЫТА' if row['status']=='open' else '🛑 ЗАВЕРШЁН') + f" • {row['title']}",
-        f"Создал: <@{row['creator_id']}>\nДата: <t:{row['starts_at']}:F> (<t:{row['starts_at']}:R>)\n"
-        f"{row['details'] or ''}", EVENTS[row['kind']][2])
-    for seat, label, cap in [('main','ОСНОВА',row['capacity']),('reserve','РЕЗЕРВ',row['reserve_capacity'])]:
-        group=[p for p in people if p['seat']==seat]
-        lines=[f"{'👑 ' if p['member_id']==row['creator_id'] else ''}<@{p['member_id']}>{' ✅' if p['attended'] else ''}" for p in group]
-        for offset in range(0,max(len(lines),1),20):
-            e.add_field(name=f'{label} • {len(group)}/{cap}' if offset==0 else f'{label} • продолжение',
-                value='\n'.join(lines[offset:offset+20]) or 'Свободно',inline=False)
-    e.set_footer(text=f"SKIF • Сбор #{row['id']} • ✅ присутствие подтверждено организатором")
+    e = base_embed(
+        ('🟢 ЗАПИСЬ ОТКРЫТА' if row['status'] == 'open' else '🛑 ЗАВЕРШЁН') + f' • {row["title"]}',
+        f'Создал: <@{row["creator_id"]}>\nДата: <t:{row["starts_at"]}:F> (<t:{row["starts_at"]}:R>)\n{row["details"] or ""}',
+        EVENTS[row['kind']][2],
+    )
+    for seat, label, cap in [('main', 'ОСНОВА', row['capacity']), ('reserve', 'РЕЗЕРВ', row['reserve_capacity'])]:
+        group = [p for p in people if p['seat'] == seat]
+        lines = [f'{"👑 " if p["member_id"] == row["creator_id"] else ""}<@{p["member_id"]}>{" ✅" if p["attended"] else ""}' for p in group]
+        for offset in range(0, max(len(lines), 1), 20):
+            e.add_field(
+                name=f'{label} • {len(group)}/{cap}' if offset == 0 else f'{label} • продолжение',
+                value='\n'.join(lines[offset : offset + 20]) or 'Свободно',
+                inline=False,
+            )
+    e.set_footer(text=f'SKIF • Сбор #{row["id"]} • ✅ присутствие подтверждено организатором')
     return e
 
 
-async def signup(db,event_id,member_id,leave=False,seat='main'):
-    return await roster.join(db,event_id,member_id,leave,seat)
+async def signup(db, event_id, member_id, leave=False, seat='main'):
+    return await roster.join(db, event_id, member_id, leave, seat)
 
 
 class CreateEventModal(SafeModal, title='Создать сбор • Skif'):
-    date_input = discord.ui.TextInput(label='Дата и время по Москве (UTC+3)', placeholder='ДД.ММ.ГГГГ ЧЧ:ММ',max_length=16)
+    date_input = discord.ui.TextInput(label='Дата и время по Москве (UTC+3)', placeholder='ДД.ММ.ГГГГ ЧЧ:ММ', max_length=16)
     limit_input = discord.ui.TextInput(label='Количество мест (1–100)', default='35', max_length=3)
-    reserve_input = discord.ui.TextInput(label='Мест в резерве (всего до 100)',default='10',max_length=2)
-    details_input = discord.ui.TextInput(label='Место встречи / требования', style=discord.TextStyle.paragraph,required=False,max_length=700)
+    reserve_input = discord.ui.TextInput(label='Мест в резерве (всего до 100)', default='10', max_length=2)
+    details_input = discord.ui.TextInput(label='Место встречи / требования', style=discord.TextStyle.paragraph, required=False, max_length=700)
+
     def __init__(self, bot, kind, day=None, template=None):
-        super().__init__(); self.bot=bot; self.kind=kind;self.day=day
+        super().__init__()
+        self.bot = bot
+        self.kind = kind
+        self.day = day
         if day is not None:
-            self.date_input.label='Время по Москве • '+day.strftime('%d.%m')
-            self.date_input.placeholder='20:00'
+            self.date_input.label = 'Время по Москве • ' + day.strftime('%d.%m')
+            self.date_input.placeholder = '20:00'
         if template:
-            self.limit_input.default=str(template['capacity'])
-            self.reserve_input.default=str(template['reserve_capacity'])
-            self.details_input.default=template.get('details') or '' 
+            self.limit_input.default = str(template['capacity'])
+            self.reserve_input.default = str(template['reserve_capacity'])
+            self.details_input.default = template.get('details') or ''
+
     async def on_submit(self, i):
-        if not await allowed(self.bot,i):
-            return await i.response.send_message('Создают только Хай, Дэп Овнер и Овнер.',ephemeral=True)
-        ts=parse_time(str(self.date_input),self.day)
-        try: capacity=int(str(self.limit_input))
-        except ValueError: raise ValueError('Количество мест — целое число от 1 до 100.') from None
-        if not 1 <= capacity <= 100: raise ValueError('Количество мест — от 1 до 100.')
-        try: reserve=int(str(self.reserve_input))
-        except ValueError: raise ValueError('Резерв — целое число.') from None
-        if not 0<=reserve<=99 or capacity+reserve>100: raise ValueError('Основа + резерв — не больше 100 мест.')
-        cfg=await self.bot.db.get_config(i.guild_id)
-        ch=i.guild.get_channel(cfg.get(f'{self.kind}_panel_channel_id') or 0)
-        if not isinstance(ch,discord.TextChannel): raise ValueError('Канал сбора не настроен: /setup.')
-        family_role=i.guild.get_role(cfg.get('family_role_id') or 0)
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Создают только Хай, Дэп Овнер и Овнер.', ephemeral=True)
+        ts = parse_time(str(self.date_input), self.day)
+        try:
+            capacity = int(str(self.limit_input))
+        except ValueError:
+            raise ValueError('Количество мест — целое число от 1 до 100.') from None
+        if not 1 <= capacity <= 100:
+            raise ValueError('Количество мест — от 1 до 100.')
+        try:
+            reserve = int(str(self.reserve_input))
+        except ValueError:
+            raise ValueError('Резерв — целое число.') from None
+        if not 0 <= reserve <= 99 or capacity + reserve > 100:
+            raise ValueError('Основа + резерв — не больше 100 мест.')
+        cfg = await self.bot.db.get_config(i.guild_id)
+        ch = i.guild.get_channel(cfg.get(f'{self.kind}_panel_channel_id') or 0)
+        if not isinstance(ch, discord.TextChannel):
+            raise ValueError('Канал сбора не настроен: /setup.')
+        family_role = i.guild.get_role(cfg.get('family_role_id') or 0)
         if not family_role:
             raise ValueError('Сначала выбери семейную роль Skif в /setup.')
         if not family_role.mentionable and not ch.permissions_for(i.guild.me).mention_everyone:
             raise ValueError('Для уведомления Skif разреши боту упоминать все роли в этом канале.')
         await i.response.defer(ephemeral=True)
-        eid = await self.bot.db.create_event(i.guild_id, ch.id, i.user.id, self.kind, EVENTS[self.kind][1].replace('плюсы-', '').upper(), ts, capacity, str(self.details_input), reserve)
-        row=await self.bot.db.event_by_id(eid)
+        eid = await self.bot.db.create_event(
+            i.guild_id,
+            ch.id,
+            i.user.id,
+            self.kind,
+            EVENTS[self.kind][1].replace('плюсы-', '').upper(),
+            ts,
+            capacity,
+            str(self.details_input),
+            reserve,
+        )
+        row = await self.bot.db.event_by_id(eid)
         try:
-            family_role=i.guild.get_role(cfg.get('family_role_id') or 0)
-            msg=await ch.send(content=family_role.mention if family_role else None, embed=await card(self.bot.db,row),view=EventView(self.bot),allowed_mentions=discord.AllowedMentions(everyone=False,users=False,roles=[family_role] if family_role else [],replied_user=False))
+            family_role = i.guild.get_role(cfg.get('family_role_id') or 0)
+            msg = await ch.send(
+                content=family_role.mention if family_role else None,
+                embed=await card(self.bot.db, row),
+                view=EventView(self.bot),
+                allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=[family_role] if family_role else [], replied_user=False),
+            )
         except Exception:
             await self.bot.db.delete_event(eid)
             raise
         await self.bot.db.set_event_message(eid, msg.id)
-        await i.followup.send(f'Сбор создан: {msg.jump_url}',ephemeral=True)
+        await i.followup.send(f'Сбор создан: {msg.jump_url}', ephemeral=True)
 
 
 class EventPanelView(SafeView):
-    def __init__(self,bot): super().__init__(timeout=None);self.bot=bot
-    @discord.ui.button(label='Создать сбор',emoji='📅',style=discord.ButtonStyle.primary,custom_id='skif:event:open')
-    async def create(self,i,_):
-        if not await allowed(self.bot,i):
-            return await i.response.send_message('Создавать сборы могут Хай и выше. Для записи нажми кнопку под нужным сбором.',ephemeral=True)
-        cfg=await self.bot.db.get_config(i.guild_id)
-        kind=next((k for k in EVENTS if cfg.get(f'{k}_panel_channel_id')==i.channel_id),None)
-        if not kind: raise ValueError('Канал не настроен: /setup.')
-        await choose_day(self.bot,i,kind)
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label='Создать сбор', emoji='📅', style=discord.ButtonStyle.primary, custom_id='skif:event:open')
+    async def create(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Создавать сборы могут Хай и выше. Для записи нажми кнопку под нужным сбором.', ephemeral=True)
+        cfg = await self.bot.db.get_config(i.guild_id)
+        kind = next((k for k in EVENTS if cfg.get(f'{k}_panel_channel_id') == i.channel_id), None)
+        if not kind:
+            raise ValueError('Канал не настроен: /setup.')
+        await choose_day(self.bot, i, kind)
 
 
 class AttendanceSelect(discord.ui.UserSelect):
-    def __init__(self,bot,message_id):
-        super().__init__(placeholder='Выбери участника: поставить / снять ✅',min_values=1,max_values=1)
-        self.bot=bot;self.message_id=message_id
-    async def callback(self,i):
-        if not await allowed(self.bot,i): return await i.response.send_message('Только Хай и выше.',ephemeral=True)
+    def __init__(self, bot, message_id):
+        super().__init__(placeholder='Выбери участника: поставить / снять ✅', min_values=1, max_values=1)
+        self.bot = bot
+        self.message_id = message_id
+
+    async def callback(self, i):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,self.message_id)]:
-            row=await event_row(self.bot,i.guild_id,self.message_id)
-            if not row: return await i.followup.send('Сбор не найден.',ephemeral=True)
-            cfg=await self.bot.db.get_config(i.guild_id)
-            if not roster.may_confirm(i.user,cfg,row):
-                return await i.followup.send('Присутствие подтверждает создатель МП, Овнер или Дэп Овнер.',ephemeral=True)
-            await roster.confirm(self.bot.db,row['id'],self.values[0].id,i.user.id)
-            msg=await i.channel.fetch_message(self.message_id)
-            await edit_if_changed(msg,embed=await card(self.bot.db,row),allowed_mentions=discord.AllowedMentions.none())
+        async with self.bot.operation_locks[('event', i.guild_id, self.message_id)]:
+            row = await event_row(self.bot, i.guild_id, self.message_id)
+            if not row:
+                return await i.followup.send('Сбор не найден.', ephemeral=True)
+            cfg = await self.bot.db.get_config(i.guild_id)
+            if not roster.may_confirm(i.user, cfg, row):
+                return await i.followup.send('Присутствие подтверждает создатель МП, Овнер или Дэп Овнер.', ephemeral=True)
+            await roster.confirm(self.bot.db, row['id'], self.values[0].id, i.user.id)
+            msg = await i.channel.fetch_message(self.message_id)
+            await edit_if_changed(msg, embed=await card(self.bot.db, row), allowed_mentions=discord.AllowedMentions.none())
             from .profiles import refresh_member
-            await refresh_member(self.bot,i.guild,self.values[0].id)
-            await i.followup.send('Отметка присутствия и карточка игрока обновлены.',ephemeral=True)
+
+            await refresh_member(self.bot, i.guild, self.values[0].id)
+            await i.followup.send('Отметка присутствия и карточка игрока обновлены.', ephemeral=True)
 
 
 @coalesced_panel
-async def refresh_signup_card(bot,message):
-    async with bot.operation_locks[('event',message.guild.id,message.id)]:
-        row=await event_row(bot,message.guild.id,message.id)
-        if not row:return
-        current=await message.channel.fetch_message(message.id)
-        return await edit_if_changed(current,embed=await card(bot.db,row),allowed_mentions=discord.AllowedMentions.none())
+async def refresh_signup_card(bot, message):
+    async with bot.operation_locks[('event', message.guild.id, message.id)]:
+        row = await event_row(bot, message.guild.id, message.id)
+        if not row:
+            return
+        current = await message.channel.fetch_message(message.id)
+        return await edit_if_changed(current, embed=await card(bot.db, row), allowed_mentions=discord.AllowedMentions.none())
 
 
 class EventView(SafeView):
-    def __init__(self,bot,legacy=False):
-        super().__init__(timeout=None);self.bot=bot
+    def __init__(self, bot, legacy=False):
+        super().__init__(timeout=None)
+        self.bot = bot
         if not legacy:
-            self.remove_item(self.attendance);self.remove_item(self.finish)
-    async def change(self,i,leave=False,seat='main'):
-        if not isinstance(i.user,discord.Member) or (not leave and not await self.bot.is_family_member(i.user)):
-            return await i.response.send_message('Запись доступна участникам семьи.',ephemeral=True)
+            self.remove_item(self.attendance)
+            self.remove_item(self.finish)
+
+    async def change(self, i, leave=False, seat='main'):
+        if not isinstance(i.user, discord.Member) or (not leave and not await self.bot.is_family_member(i.user)):
+            return await i.response.send_message('Запись доступна участникам семьи.', ephemeral=True)
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,i.message.id)]:
-            row=await event_row(self.bot,i.guild_id,i.message.id)
-            if not row: return await i.followup.send('Сбор не найден.',ephemeral=True)
-            result=await signup(self.bot.db,row['id'],i.user.id,leave,seat)
-        await i.followup.send(result,ephemeral=True)
-        await refresh_signup_card(self.bot,i.message)
-    @discord.ui.button(label='Записаться',emoji='➕',style=discord.ButtonStyle.success,custom_id='skif:event:join')
-    async def join(self,i,_): await self.change(i)
-    @discord.ui.button(label='В резерв',emoji='🕒',style=discord.ButtonStyle.secondary,custom_id='skif:event:reserve')
-    async def reserve(self,i,_): await self.change(i,seat='reserve')
-    @discord.ui.button(label='Выйти',emoji='➖',style=discord.ButtonStyle.secondary,custom_id='skif:event:leave')
-    async def leave(self,i,_): await self.change(i,True)
-    @discord.ui.button(label='Присутствие',emoji='✅',style=discord.ButtonStyle.secondary,custom_id='skif:event:attendance')
-    async def attendance(self,i,_):
-        if not await allowed(self.bot,i): return await i.response.send_message('Отмечают Хай и выше.',ephemeral=True)
-        row=await event_row(self.bot,i.guild_id,i.message.id)
-        if not row or not roster.may_confirm(i.user,await self.bot.db.get_config(i.guild_id),row):
-            return await i.response.send_message('Только создатель МП, Овнер или Дэп Овнер.',ephemeral=True)
-        view=SafeView(timeout=180);view.add_item(AttendanceSelect(self.bot,i.message.id))
-        await i.response.send_message('Выбери записанного участника. Повторный выбор снимает отметку.',view=view,ephemeral=True)
-    @discord.ui.button(label='Управление',emoji='⚙️',style=discord.ButtonStyle.secondary,custom_id='skif:event:manage',row=1)
-    async def manage(self,i,_):
-        if not await allowed(self.bot,i): return await i.response.send_message('Только Хай и выше.',ephemeral=True)
-        await i.response.send_message('Перемести участника или измени число мест.',view=RosterManageView(self.bot,i.message.id),ephemeral=True)
-    @discord.ui.button(label='Завершить',emoji='🛑',style=discord.ButtonStyle.danger,custom_id='skif:event:finish',row=1)
-    async def finish(self,i,_):
-        if not await allowed(self.bot,i): return await i.response.send_message('Завершают Хай и выше.',ephemeral=True)
+        async with self.bot.operation_locks[('event', i.guild_id, i.message.id)]:
+            row = await event_row(self.bot, i.guild_id, i.message.id)
+            if not row:
+                return await i.followup.send('Сбор не найден.', ephemeral=True)
+            result = await signup(self.bot.db, row['id'], i.user.id, leave, seat)
+        await i.followup.send(result, ephemeral=True)
+        await refresh_signup_card(self.bot, i.message)
+
+    @discord.ui.button(label='Записаться', emoji='➕', style=discord.ButtonStyle.success, custom_id='skif:event:join')
+    async def join(self, i, _):
+        await self.change(i)
+
+    @discord.ui.button(label='В резерв', emoji='🕒', style=discord.ButtonStyle.secondary, custom_id='skif:event:reserve')
+    async def reserve(self, i, _):
+        await self.change(i, seat='reserve')
+
+    @discord.ui.button(label='Выйти', emoji='➖', style=discord.ButtonStyle.secondary, custom_id='skif:event:leave')
+    async def leave(self, i, _):
+        await self.change(i, True)
+
+    @discord.ui.button(label='Присутствие', emoji='✅', style=discord.ButtonStyle.secondary, custom_id='skif:event:attendance')
+    async def attendance(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Отмечают Хай и выше.', ephemeral=True)
+        row = await event_row(self.bot, i.guild_id, i.message.id)
+        if not row or not roster.may_confirm(i.user, await self.bot.db.get_config(i.guild_id), row):
+            return await i.response.send_message('Только создатель МП, Овнер или Дэп Овнер.', ephemeral=True)
+        view = SafeView(timeout=180)
+        view.add_item(AttendanceSelect(self.bot, i.message.id))
+        await i.response.send_message('Выбери записанного участника. Повторный выбор снимает отметку.', view=view, ephemeral=True)
+
+    @discord.ui.button(label='Управление', emoji='⚙️', style=discord.ButtonStyle.secondary, custom_id='skif:event:manage', row=1)
+    async def manage(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
+        await i.response.send_message('Перемести участника или измени число мест.', view=RosterManageView(self.bot, i.message.id), ephemeral=True)
+
+    @discord.ui.button(label='Завершить', emoji='🛑', style=discord.ButtonStyle.danger, custom_id='skif:event:finish', row=1)
+    async def finish(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Завершают Хай и выше.', ephemeral=True)
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,i.message.id)]:
-            row=await event_row(self.bot,i.guild_id,i.message.id)
-            if not row: return await i.followup.send('Сбор не найден.',ephemeral=True)
+        async with self.bot.operation_locks[('event', i.guild_id, i.message.id)]:
+            row = await event_row(self.bot, i.guild_id, i.message.id)
+            if not row:
+                return await i.followup.send('Сбор не найден.', ephemeral=True)
             await self.bot.db.finish_event(row['id'])
-            row['status']='finished'
-            view=EventView(self.bot)
-            for item in view.children: item.disabled=item.custom_id!='skif:event:manage'
-            await edit_if_changed(i.message,embed=await card(self.bot.db,row),view=view,allowed_mentions=discord.AllowedMentions.none())
-            await i.followup.send('Сбор завершён. Список сохранён; можно отметить присутствие.',ephemeral=True)
+            row['status'] = 'finished'
+            view = EventView(self.bot)
+            for item in view.children:
+                item.disabled = item.custom_id != 'skif:event:manage'
+            await edit_if_changed(i.message, embed=await card(self.bot.db, row), view=view, allowed_mentions=discord.AllowedMentions.none())
+            await i.followup.send('Сбор завершён. Список сохранён; можно отметить присутствие.', ephemeral=True)
 
 
 def event_panel(kind):
-    emoji,name,color=EVENTS[kind]
-    return base_embed(f'{emoji} {name.upper()}',
-        'Нажми **Записаться** под сбором или выбери **В резерв**.\n'
-        'Создание и управление — **Хай и выше**.',color)
+    emoji, name, color = EVENTS[kind]
+    return base_embed(
+        f'{emoji} {name.upper()}', 'Нажми **Записаться** под сбором или выбери **В резерв**.\nСоздание и управление — **Хай и выше**.', color
+    )
 
 
 class MoveSelect(discord.ui.UserSelect):
-    def __init__(self,bot,message_id,seat):
-        super().__init__(placeholder='Перевести в '+('основу' if seat=='main' else 'резерв'),row=0 if seat=='main' else 1)
-        self.bot=bot;self.message_id=message_id;self.seat=seat
-    async def callback(self,i):
-        if not await allowed(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
+    def __init__(self, bot, message_id, seat):
+        super().__init__(placeholder='Перевести в ' + ('основу' if seat == 'main' else 'резерв'), row=0 if seat == 'main' else 1)
+        self.bot = bot
+        self.message_id = message_id
+        self.seat = seat
+
+    async def callback(self, i):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,self.message_id)]:
-            row=await event_row(self.bot,i.guild_id,self.message_id)
-            if not row:raise ValueError('Сбор не найден.')
-            await roster.move(self.bot.db,row['id'],self.values[0].id,self.seat,i.user.id)
-            msg=await i.channel.fetch_message(self.message_id)
-            await edit_if_changed(msg,embed=await card(self.bot.db,row),allowed_mentions=discord.AllowedMentions.none())
-            await i.followup.send('Состав обновлён.',ephemeral=True)
+        async with self.bot.operation_locks[('event', i.guild_id, self.message_id)]:
+            row = await event_row(self.bot, i.guild_id, self.message_id)
+            if not row:
+                raise ValueError('Сбор не найден.')
+            await roster.move(self.bot.db, row['id'], self.values[0].id, self.seat, i.user.id)
+            msg = await i.channel.fetch_message(self.message_id)
+            await edit_if_changed(msg, embed=await card(self.bot.db, row), allowed_mentions=discord.AllowedMentions.none())
+            await i.followup.send('Состав обновлён.', ephemeral=True)
 
 
-class LimitsModal(SafeModal,title='Лимиты сбора'):
-    main=discord.ui.TextInput(label='Мест в основе',max_length=3)
-    reserve=discord.ui.TextInput(label='Мест в резерве',max_length=2)
-    def __init__(self,bot,message_id):super().__init__();self.bot=bot;self.message_id=message_id
-    async def on_submit(self,i):
-        if not await allowed(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
-        try:main,reserve=int(str(self.main)),int(str(self.reserve))
-        except ValueError:raise ValueError('Укажи целые числа.') from None
+class LimitsModal(SafeModal, title='Лимиты сбора'):
+    main = discord.ui.TextInput(label='Мест в основе', max_length=3)
+    reserve = discord.ui.TextInput(label='Мест в резерве', max_length=2)
+
+    def __init__(self, bot, message_id):
+        super().__init__()
+        self.bot = bot
+        self.message_id = message_id
+
+    async def on_submit(self, i):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
+        try:
+            main, reserve = int(str(self.main)), int(str(self.reserve))
+        except ValueError:
+            raise ValueError('Укажи целые числа.') from None
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,self.message_id)]:
-            row=await event_row(self.bot,i.guild_id,self.message_id)
-            if not row:raise ValueError('Сбор не найден.')
-            await roster.limits(self.bot.db,row['id'],main,reserve,i.user.id)
-            row=await event_row(self.bot,i.guild_id,self.message_id)
-            msg=await i.channel.fetch_message(self.message_id)
-            await edit_if_changed(msg,embed=await card(self.bot.db,row),allowed_mentions=discord.AllowedMentions.none())
-            await i.followup.send('Лимиты обновлены.',ephemeral=True)
+        async with self.bot.operation_locks[('event', i.guild_id, self.message_id)]:
+            row = await event_row(self.bot, i.guild_id, self.message_id)
+            if not row:
+                raise ValueError('Сбор не найден.')
+            await roster.limits(self.bot.db, row['id'], main, reserve, i.user.id)
+            row = await event_row(self.bot, i.guild_id, self.message_id)
+            msg = await i.channel.fetch_message(self.message_id)
+            await edit_if_changed(msg, embed=await card(self.bot.db, row), allowed_mentions=discord.AllowedMentions.none())
+            await i.followup.send('Лимиты обновлены.', ephemeral=True)
 
 
 class RosterManageView(SafeView):
-    def __init__(self,bot,message_id):
-        super().__init__(timeout=180);self.bot=bot;self.message_id=message_id
-        self.add_item(MoveSelect(bot,message_id,'main'));self.add_item(MoveSelect(bot,message_id,'reserve'))
-    @discord.ui.button(label='Изменить лимиты',style=discord.ButtonStyle.primary,row=2)
-    async def limits(self,i,_):
-        if not await allowed(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
-        await i.response.send_modal(LimitsModal(self.bot,self.message_id))
+    def __init__(self, bot, message_id):
+        super().__init__(timeout=180)
+        self.bot = bot
+        self.message_id = message_id
+        self.add_item(MoveSelect(bot, message_id, 'main'))
+        self.add_item(MoveSelect(bot, message_id, 'reserve'))
 
+    @discord.ui.button(label='Изменить лимиты', style=discord.ButtonStyle.primary, row=2)
+    async def limits(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
+        await i.response.send_modal(LimitsModal(self.bot, self.message_id))
 
-    @discord.ui.button(label='Присутствие',emoji='✅',style=discord.ButtonStyle.secondary,row=2)
-    async def attendance(self,i,_):
-        if not await allowed(self.bot,i): return await i.response.send_message('Только Хай и выше.',ephemeral=True)
-        row=await event_row(self.bot,i.guild_id,self.message_id)
-        if not row or not roster.may_confirm(i.user,await self.bot.db.get_config(i.guild_id),row):
-            return await i.response.send_message('Присутствие подтверждает создатель, Дэп Овнер или Овнер.',ephemeral=True)
-        view=SafeView(timeout=180);view.add_item(AttendanceSelect(self.bot,self.message_id))
-        await i.response.send_message('Выбери участника для отметки присутствия.',view=view,ephemeral=True)
+    @discord.ui.button(label='Присутствие', emoji='✅', style=discord.ButtonStyle.secondary, row=2)
+    async def attendance(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
+        row = await event_row(self.bot, i.guild_id, self.message_id)
+        if not row or not roster.may_confirm(i.user, await self.bot.db.get_config(i.guild_id), row):
+            return await i.response.send_message('Присутствие подтверждает создатель, Дэп Овнер или Овнер.', ephemeral=True)
+        view = SafeView(timeout=180)
+        view.add_item(AttendanceSelect(self.bot, self.message_id))
+        await i.response.send_message('Выбери участника для отметки присутствия.', view=view, ephemeral=True)
 
-    @discord.ui.button(label='Завершить сбор',style=discord.ButtonStyle.danger,row=3)
-    async def finish(self,i,_):
-        if not await allowed(self.bot,i): return await i.response.send_message('Только Хай и выше.',ephemeral=True)
+    @discord.ui.button(label='Завершить сбор', style=discord.ButtonStyle.danger, row=3)
+    async def finish(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
         await i.response.defer(ephemeral=True)
-        async with self.bot.operation_locks[('event',i.guild_id,self.message_id)]:
-            row=await event_row(self.bot,i.guild_id,self.message_id)
-            if not row: return await i.followup.send('Сбор не найден.',ephemeral=True)
+        async with self.bot.operation_locks[('event', i.guild_id, self.message_id)]:
+            row = await event_row(self.bot, i.guild_id, self.message_id)
+            if not row:
+                return await i.followup.send('Сбор не найден.', ephemeral=True)
             await self.bot.db.finish_event(row['id'])
-            row['status']='finished';view=EventView(self.bot)
-            for item in view.children: item.disabled=item.custom_id!='skif:event:manage'
-            msg=await i.channel.fetch_message(self.message_id)
-            await edit_if_changed(msg,embed=await card(self.bot.db,row),view=view,allowed_mentions=discord.AllowedMentions.none())
-            await i.followup.send('Сбор завершён. Подтверждение присутствия доступно в управлении.',ephemeral=True)
+            row['status'] = 'finished'
+            view = EventView(self.bot)
+            for item in view.children:
+                item.disabled = item.custom_id != 'skif:event:manage'
+            msg = await i.channel.fetch_message(self.message_id)
+            await edit_if_changed(msg, embed=await card(self.bot.db, row), view=view, allowed_mentions=discord.AllowedMentions.none())
+            await i.followup.send('Сбор завершён. Подтверждение присутствия доступно в управлении.', ephemeral=True)
 
-    @discord.ui.button(label='Повторить сбор',emoji='🔁',row=3)
-    async def repeat(self,i,_):
-        if not await allowed(self.bot,i):return await i.response.send_message('Повторяют сбор Хай и выше.',ephemeral=True)
-        row=await event_row(self.bot,i.guild_id,self.message_id)
-        if not row:return await i.response.send_message('Исходный сбор не найден.',ephemeral=True)
-        await choose_day(self.bot,i,row['kind'],row)
+    @discord.ui.button(label='Повторить сбор', emoji='🔁', row=3)
+    async def repeat(self, i, _):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Повторяют сбор Хай и выше.', ephemeral=True)
+        row = await event_row(self.bot, i.guild_id, self.message_id)
+        if not row:
+            return await i.response.send_message('Исходный сбор не найден.', ephemeral=True)
+        await choose_day(self.bot, i, row['kind'], row)
 
 
-async def choose_day(bot,i,kind,template=None):
-    if not await allowed(bot,i):return await i.response.send_message('Создают сборы Хай и выше.',ephemeral=True)
+async def choose_day(bot, i, kind, template=None):
+    if not await allowed(bot, i):
+        return await i.response.send_message('Создают сборы Хай и выше.', ephemeral=True)
     if template is None:
-        template=await bot.db.event_template(i.guild_id, kind)
-    await i.response.send_message('Когда сбор? Время указывается по Москве. Места и описание можно изменить в форме.',view=DayView(bot,kind,template),ephemeral=True)
+        template = await bot.db.event_template(i.guild_id, kind)
+    await i.response.send_message(
+        'Когда сбор? Время указывается по Москве. Места и описание можно изменить в форме.', view=DayView(bot, kind, template), ephemeral=True
+    )
 
 
 class DayView(SafeView):
-    def __init__(self,bot,kind,template):super().__init__(timeout=300);self.bot=bot;self.kind=kind;self.template=template
-    async def open(self,i,offset):
-        if not await allowed(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
-        day=None if offset is None else datetime.now(timezone(timedelta(hours=3))).date()+timedelta(days=offset)
-        await i.response.send_modal(CreateEventModal(self.bot,self.kind,day,self.template))
-    @discord.ui.button(label='Сегодня',style=discord.ButtonStyle.success)
-    async def today(self,i,_):await self.open(i,0)
-    @discord.ui.button(label='Завтра',style=discord.ButtonStyle.primary)
-    async def tomorrow(self,i,_):await self.open(i,1)
+    def __init__(self, bot, kind, template):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.kind = kind
+        self.template = template
+
+    async def open(self, i, offset):
+        if not await allowed(self.bot, i):
+            return await i.response.send_message('Только Хай и выше.', ephemeral=True)
+        day = None if offset is None else datetime.now(timezone(timedelta(hours=3))).date() + timedelta(days=offset)
+        await i.response.send_modal(CreateEventModal(self.bot, self.kind, day, self.template))
+
+    @discord.ui.button(label='Сегодня', style=discord.ButtonStyle.success)
+    async def today(self, i, _):
+        await self.open(i, 0)
+
+    @discord.ui.button(label='Завтра', style=discord.ButtonStyle.primary)
+    async def tomorrow(self, i, _):
+        await self.open(i, 1)
+
     @discord.ui.button(label='Другая дата')
-    async def other(self,i,_):await self.open(i,None)
+    async def other(self, i, _):
+        await self.open(i, None)

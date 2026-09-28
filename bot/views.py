@@ -30,4 +30,20 @@ from .progression import (
     WarnPanelView,
 )
 
-__all__ = ['ActivityClassifyView', 'ActivityReviewView', 'ActivityTypeSelect', 'ApplicationModal', 'ApplicationPanelView', 'GreenPanelView', 'RecruiterActionSelect', 'RecruiterActionView', 'RejectActivityModal', 'VacationDecisionView', 'VacationModal', 'VacationPanelView', 'WarnPanelView', '_id_from_title', '_thread_name']
+__all__ = [
+    'ActivityClassifyView',
+    'ActivityReviewView',
+    'ActivityTypeSelect',
+    'ApplicationModal',
+    'ApplicationPanelView',
+    'GreenPanelView',
+    'RecruiterActionSelect',
+    'RecruiterActionView',
+    'RejectActivityModal',
+    'VacationDecisionView',
+    'VacationModal',
+    'VacationPanelView',
+    'WarnPanelView',
+    '_id_from_title',
+    '_thread_name',
+]

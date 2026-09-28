@@ -1,4 +1,5 @@
 """Permission policy only; no Discord messages, SQL or role mutations."""
+
 import os
 
 
@@ -68,8 +69,11 @@ def may_view_profiles(member, cfg):
 
 
 def may_confirm_attendance(member, cfg, event):
-    return is_leader(member, cfg) or bool(has_role(member, cfg, ('dep_leader_role_id',))) or (
-        member.id == event['creator_id'] and bool(has_role(member, cfg, HIGH_KEYS)))
+    return (
+        is_leader(member, cfg)
+        or bool(has_role(member, cfg, ('dep_leader_role_id',)))
+        or (member.id == event['creator_id'] and bool(has_role(member, cfg, HIGH_KEYS)))
+    )
 
 
 def may_use_legacy_admin(member, cfg):
@@ -78,8 +82,11 @@ def may_use_legacy_admin(member, cfg):
 
 
 def may_decide_application(member, cfg, application):
-    return may_recruit(member, cfg) and bool(application.get('assigned_to')) and (
-        application['assigned_to'] == member.id or may_use_legacy_admin(member, cfg))
+    return (
+        may_recruit(member, cfg)
+        and bool(application.get('assigned_to'))
+        and (application['assigned_to'] == member.id or may_use_legacy_admin(member, cfg))
+    )
 
 
 def may_setup(member, cfg, resolve_role):
