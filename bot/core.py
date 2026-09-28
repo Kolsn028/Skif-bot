@@ -81,9 +81,21 @@ class SkifBot(commands.Bot):
             ActivityReviewView(self),
         ):
             self.add_view(view)
-        from .progression import ContractPanelView, PromotionPanelView, ProgressReviewView
+        from .progression import (
+            ContractPanelView,
+            GreenPanelView,
+            ProgressReviewView,
+            PromotionPanelView,
+            WarnPanelView,
+        )
 
-        for view in (ContractPanelView(self), PromotionPanelView(self), ProgressReviewView(self)):
+        for view in (
+            ContractPanelView(self),
+            GreenPanelView(self),
+            WarnPanelView(self),
+            PromotionPanelView(self),
+            ProgressReviewView(self),
+        ):
             self.add_view(view)
         from .profiles import ProfileLauncher
 
