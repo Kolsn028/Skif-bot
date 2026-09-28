@@ -32,7 +32,7 @@ class Events(unittest.IsolatedAsyncioTestCase):
     async def test_creation_role_checked_again_at_modal_submit(self):
         cfg=dict(leader_role_id=1,dep_leader_role_id=2,high_staff_role_id=3,recruiter_role_id=4)
         for rid in (1,2,3,4,5):
-            member=SimpleNamespace(id=10,guild=SimpleNamespace(owner_id=999),get_role=lambda r:r if r==rid else None)
+            member=SimpleNamespace(id=10,guild=SimpleNamespace(owner_id=999),get_role=lambda r, rid=rid:r if r==rid else None)
             self.assertEqual(bool(may_manage_events(member,cfg)),rid in (1,2,3))
         i=MagicMock(spec=discord.Interaction);i.guild_id=1;i.user=MagicMock(spec=discord.Member)
         i.user.id=10;i.user.guild.owner_id=999;i.user.get_role.return_value=None

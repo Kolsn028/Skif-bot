@@ -64,7 +64,8 @@ class AccessControlTest(unittest.TestCase):
             self.assertTrue(access.may_confirm_attendance(member(roles, uid), CFG, event))
 
     def test_setup_name_lookup_only_before_configuration(self):
-        resolver = lambda guild,key: NS(id=1) if key=='leader_role_id' else None
+        def resolver(guild, key):
+            return NS(id=1) if key=='leader_role_id' else None
         self.assertTrue(access.may_setup(member([1]), {}, resolver))
         self.assertFalse(access.may_setup(member([1]), {'role_schema_version':2}, resolver))
         self.assertFalse(access.may_setup(member([3]), {}, resolver))

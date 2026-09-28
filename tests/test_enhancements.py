@@ -40,7 +40,7 @@ class Improvements(unittest.IsolatedAsyncioTestCase):
         guild=SimpleNamespace(id=1,owner_id=99)
         viewer=MagicMock(spec=discord.Member);viewer.id=10;viewer.guild=guild
         for role,expected in [(4,False),(3,True),(2,True),(1,True),(None,False)]:
-            viewer.get_role.side_effect=lambda rid: rid==role
+            viewer.get_role.side_effect=lambda rid, role=role: rid==role
             self.assertEqual(bool(await can_view(SimpleNamespace(db=self.db),guild,viewer,10)),expected)
     async def test_case_recovers_existing_topic(self):
         ch=MagicMock(spec=discord.TextChannel);ch.id=42;ch.topic='Личное дело • owner=2'

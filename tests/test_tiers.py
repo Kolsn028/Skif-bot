@@ -47,7 +47,7 @@ class Tiers(unittest.IsolatedAsyncioTestCase):
         bot=SimpleNamespace(db=SimpleNamespace(get_config=AsyncMock(return_value=cfg)))
         i=SimpleNamespace(guild_id=GUILD_ID,user=user)
         for role,expected in [(4,False),(3,False),(2,False),(1,False),(TIERCHECK_ROLE_ID,True)]:
-            user.get_role.side_effect=lambda rid: rid==role
+            user.get_role.side_effect=lambda rid, role=role: rid==role
             self.assertEqual(bool(await can_review(bot,i)),expected)
         for tier in (1,2,3):
             form=TierModal(bot,tier)
