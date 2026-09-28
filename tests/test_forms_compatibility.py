@@ -1,4 +1,5 @@
 """Existing Discord messages must keep working after moving their handlers."""
+
 import importlib
 import unittest
 
@@ -15,10 +16,12 @@ class PersistentFormsTests(unittest.IsolatedAsyncioTestCase):
             'ActivityClassifyView': ['skif:activity:type'],
             'ActivityReviewView': ['skif:activity:approve', 'skif:activity:reject', 'skif:activity:reclassify'],
         }
-        expected.update({
-            'GreenPanelView': ['skif:green:open'],
-            'WarnPanelView': ['skif:warn:open'],
-        })
+        expected.update(
+            {
+                'GreenPanelView': ['skif:green:open'],
+                'WarnPanelView': ['skif:warn:open'],
+            }
+        )
         registered = []
         for name, ids in expected.items():
             with self.subTest(view=name):
@@ -32,7 +35,7 @@ class PersistentFormsTests(unittest.IsolatedAsyncioTestCase):
         groups = {
             'applications': ['ApplicationModal', 'ApplicationPanelView', 'RecruiterActionSelect', 'RecruiterActionView'],
             'vacations': ['VacationModal', 'VacationPanelView', 'VacationDecisionView'],
-                        'activities': ['ActivityTypeSelect', 'ActivityClassifyView', 'RejectActivityModal', 'ActivityReviewView'],
+            'activities': ['ActivityTypeSelect', 'ActivityClassifyView', 'RejectActivityModal', 'ActivityReviewView'],
         }
         for module_name, names in groups.items():
             module = importlib.import_module('bot.forms.' + module_name)
@@ -40,6 +43,7 @@ class PersistentFormsTests(unittest.IsolatedAsyncioTestCase):
                 with self.subTest(handler=name):
                     self.assertIs(getattr(views, name), getattr(module, name))
         from bot import progression as progression_module
+
         for name in ('GreenPanelView', 'WarnPanelView'):
             with self.subTest(handler=name):
                 self.assertIs(getattr(views, name), getattr(progression_module, name))

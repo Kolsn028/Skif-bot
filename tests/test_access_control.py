@@ -1,4 +1,5 @@
 """Access control tests: access policy, setup access, leave role-only."""
+
 import os
 import unittest
 from types import SimpleNamespace as NS
@@ -18,20 +19,31 @@ from bot import access
 from bot.commands import register_commands
 from bot.leave import begin_leave, restore_leave
 
-CFG = dict(leader_role_id=1, dep_leader_role_id=2, high_staff_role_id=3,
-           recruiter_role_id=4, main_role_id=5, accepted_role_id=6,
-           family_role_id=7, guest_role_id=8, role_schema_version=2)
+CFG = dict(
+    leader_role_id=1,
+    dep_leader_role_id=2,
+    high_staff_role_id=3,
+    recruiter_role_id=4,
+    main_role_id=5,
+    accepted_role_id=6,
+    family_role_id=7,
+    guest_role_id=8,
+    role_schema_version=2,
+)
 
 
 def member(roles=(), uid=10, admin=False):
-    return NS(id=uid, guild=NS(id=access.TIER_GUILD_ID, owner_id=99),
-              get_role=lambda rid: rid if rid in roles else None,
-              guild_permissions=NS(administrator=admin))
+    return NS(
+        id=uid,
+        guild=NS(id=access.TIER_GUILD_ID, owner_id=99),
+        get_role=lambda rid: rid if rid in roles else None,
+        guild_permissions=NS(administrator=admin),
+    )
 
 
 class AccessControlTest(unittest.TestCase):
     """Tests from test_access_policy.py"""
-    
+
     def test_matrix_including_admin_and_owner(self):
         for role in range(1, 9):
             m = member([role], admin=True)
@@ -50,10 +62,16 @@ class AccessControlTest(unittest.TestCase):
 
     def test_assignment_override_preserves_existing_rule(self):
         app = {'assigned_to': 11}
-        for roles, uid, admin, expected in [([4],10,False,False),([4],11,False,True),
-                ([3],10,False,False),([2],10,False,True),([4],10,True,True),([],10,True,False)]:
+        for roles, uid, admin, expected in [
+            ([4], 10, False, False),
+            ([4], 11, False, True),
+            ([3], 10, False, False),
+            ([2], 10, False, True),
+            ([4], 10, True, True),
+            ([], 10, True, False),
+        ]:
             with self.subTest(roles=roles, uid=uid, admin=admin):
-                self.assertEqual(bool(access.may_decide_application(member(roles,uid,admin),CFG,app)),expected)
+                self.assertEqual(bool(access.may_decide_application(member(roles, uid, admin), CFG, app)), expected)
 
     def test_attendance_requires_organizer_or_leadership(self):
         event = {'creator_id': 11}
@@ -65,23 +83,22 @@ class AccessControlTest(unittest.TestCase):
 
     def test_setup_name_lookup_only_before_configuration(self):
         def resolver(guild, key):
-            return NS(id=1) if key=='leader_role_id' else None
+            return NS(id=1) if key == 'leader_role_id' else None
+
         self.assertTrue(access.may_setup(member([1]), {}, resolver))
-        self.assertFalse(access.may_setup(member([1]), {'role_schema_version':2}, resolver))
+        self.assertFalse(access.may_setup(member([1]), {'role_schema_version': 2}, resolver))
         self.assertFalse(access.may_setup(member([3]), {}, resolver))
         self.assertFalse(access.may_setup(member(admin=True), {}, resolver))
         self.assertFalse(access.may_setup(member(uid=99), {}, resolver))
-        self.assertFalse(access.may_setup(member([1]), {'leader_role_id':9}, resolver))
+        self.assertFalse(access.may_setup(member([1]), {'leader_role_id': 9}, resolver))
 
 
 class SetupAccessTest(unittest.IsolatedAsyncioTestCase):
     """Tests from test_setup_access.py"""
-    
+
     async def asyncSetUp(self):
         self.bot = commands.Bot(command_prefix='!', intents=discord.Intents.none())
-        self.cfg = dict(role_schema_version=2, leader_role_id=1,
-                        dep_leader_role_id=2, high_staff_role_id=3,
-                        recruiter_role_id=4, main_role_id=5)
+        self.cfg = dict(role_schema_version=2, leader_role_id=1, dep_leader_role_id=2, high_staff_role_id=3, recruiter_role_id=4, main_role_id=5)
         self.bot.db = NS(get_config=AsyncMock(return_value=self.cfg))
         register_commands(self.bot)
 
@@ -93,14 +110,12 @@ class SetupAccessTest(unittest.IsolatedAsyncioTestCase):
         member.id = 99 if owner else 10
         member.guild = NS(owner_id=99)
         member.get_role.side_effect = lambda rid: object() if rid == role_id else None
-        return NS(user=member, guild_id=100, guild=member.guild,
-            response=NS(defer=AsyncMock()),
-            followup=NS(send=AsyncMock()))
+        return NS(user=member, guild_id=100, guild=member.guild, response=NS(defer=AsyncMock()), followup=NS(send=AsyncMock()))
 
     async def test_only_leader_can_setup_and_auto_is_removed(self):
         self.assertIsNone(self.bot.tree.get_command('setup_auto'))
         command = self.bot.tree.get_command('setup')
-        self.assertTrue({'main','guest','test','family','high'}.issubset({p.name for p in command.parameters}))
+        self.assertTrue({'main', 'guest', 'test', 'family', 'high'}.issubset({p.name for p in command.parameters}))
         self.assertTrue(await command.checks[0](self.interaction(1)))
         for role_id in (2, 3, 4, 5, None):
             for owner in (False, True):
@@ -117,15 +132,16 @@ class SetupAccessTest(unittest.IsolatedAsyncioTestCase):
         import asyncio
         from collections import defaultdict
         from bot.core import SkifBot
-        
+
         guild = NS(id=100)
         stale = NS(name='setup_auto', options=[])
-        setup = NS(name='setup', options=[NS(name=n) for n in ('main','guest','test','family')])
+        setup = NS(name='setup', options=[NS(name=n) for n in ('main', 'guest', 'test', 'family')])
         registered = [setup, stale]
+
         async def sync(**kwargs):
             registered[:] = [setup]
-        tree = NS(copy_global_to=MagicMock(), sync=AsyncMock(side_effect=sync),
-                               fetch_commands=AsyncMock(side_effect=lambda **kw: registered))
+
+        tree = NS(copy_global_to=MagicMock(), sync=AsyncMock(side_effect=sync), fetch_commands=AsyncMock(side_effect=lambda **kw: registered))
         bot = NS(tree=tree, operation_locks=defaultdict(asyncio.Lock))
         await SkifBot.sync_guild_commands(bot, guild)
         self.assertEqual([c.name for c in registered], ['setup'])
@@ -134,7 +150,7 @@ class SetupAccessTest(unittest.IsolatedAsyncioTestCase):
 
 class LeaveRoleOnlyTest(unittest.IsolatedAsyncioTestCase):
     """Tests from test_leave_role_only.py"""
-    
+
     async def test_new_leave_only_toggles_leave_role_and_preserves_saved_id(self):
         leave = MagicMock(spec=discord.Role)
         leave.id = 7
@@ -142,16 +158,20 @@ class LeaveRoleOnlyTest(unittest.IsolatedAsyncioTestCase):
         leave.is_default.return_value = False
         leave.__ge__.return_value = False
         member = NS(add_roles=AsyncMock(), remove_roles=AsyncMock())
-        guild = NS(id=1, me=NS(top_role=object()),
-            fetch_member=AsyncMock(return_value=member), get_role=lambda rid: leave if rid == 7 else None)
+        guild = NS(id=1, me=NS(top_role=object()), fetch_member=AsyncMock(return_value=member), get_role=lambda rid: leave if rid == 7 else None)
         vac = dict(id=1, member_id=10, role_snapshot=None, status='pending')
+
         async def update(vid, **fields):
             vac.update(fields)
+
         cfg = {'vacation_role_id': 7}
-        bot = NS(now_iso=lambda: '2026-09-14T00:00:00+00:00',
-            db=NS(get_config=AsyncMock(return_value=cfg),
+        bot = NS(
+            now_iso=lambda: '2026-09-14T00:00:00+00:00',
+            db=NS(
+                get_config=AsyncMock(return_value=cfg),
                 update_vacation=AsyncMock(side_effect=update),
-                get_vacation=AsyncMock(side_effect=lambda vid: dict(vac)))
+                get_vacation=AsyncMock(side_effect=lambda vid: dict(vac)),
+            ),
         )
         await begin_leave(bot, guild, dict(vac))
         self.assertEqual(member.add_roles.call_args.args, (leave,))

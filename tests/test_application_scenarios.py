@@ -1,4 +1,5 @@
 """Real SQLite + simulated Discord: full recruitment flow and failure recovery."""
+
 import asyncio
 import tempfile
 import unittest
@@ -21,10 +22,17 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Database(self.tmp.name + '/bot.db')
         await self.db.connect()
-        self.cfg = dict(guest_role_id=1, family_role_id=2, accepted_role_id=3,
-                        recruiter_role_id=4, high_staff_role_id=5,
-                        dep_leader_role_id=6, leader_role_id=7,
-                        applications_parent_channel_id=20, applications_log_channel_id=21)
+        self.cfg = dict(
+            guest_role_id=1,
+            family_role_id=2,
+            accepted_role_id=3,
+            recruiter_role_id=4,
+            high_staff_role_id=5,
+            dep_leader_role_id=6,
+            leader_role_id=7,
+            applications_parent_channel_id=20,
+            applications_log_channel_id=21,
+        )
         await self.db.set_config(100, **self.cfg)
         self.roles = {}
         for rid in range(1, 8):
@@ -47,19 +55,25 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
         self.recruiter = self.person(11, self.recruit_roles)
         self.guild.get_member.side_effect = {10: self.applicant, 11: self.recruiter}.get
         self.roles[4].members = [self.recruiter]
+
         async def add(*roles, **kwargs):
             self.held.update(r.id for r in roles)
+
         async def remove(*roles, **kwargs):
             self.held.difference_update(r.id for r in roles)
+
         self.add = add
         self.remove = remove
         self.applicant.add_roles = AsyncMock(side_effect=add)
         self.applicant.remove_roles = AsyncMock(side_effect=remove)
-        self.bot = NS(db=self.db, operation_locks=defaultdict(asyncio.Lock),
-                      now_iso=lambda: datetime.now(timezone.utc).isoformat(),
-                      is_recruiter=AsyncMock(return_value=True),
-                      can_manage=AsyncMock(return_value=False),
-                      send_or_update_leaderboard=AsyncMock())
+        self.bot = NS(
+            db=self.db,
+            operation_locks=defaultdict(asyncio.Lock),
+            now_iso=lambda: datetime.now(timezone.utc).isoformat(),
+            is_recruiter=AsyncMock(return_value=True),
+            can_manage=AsyncMock(return_value=False),
+            send_or_update_leaderboard=AsyncMock(),
+        )
 
     async def asyncTearDown(self):
         await self.db.close()
@@ -85,9 +99,13 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
         thread = MagicMock(spec=discord.Thread)
         thread.id = 30
         thread.send = AsyncMock(return_value=NS(id=32))
-        i = NS(guild=self.guild, guild_id=100, user=self.applicant,
-               response=NS(defer=AsyncMock(), send_message=AsyncMock()),
-               followup=NS(send=AsyncMock()))
+        i = NS(
+            guild=self.guild,
+            guild_id=100,
+            user=self.applicant,
+            response=NS(defer=AsyncMock(), send_message=AsyncMock()),
+            followup=NS(send=AsyncMock()),
+        )
         modal = ApplicationModal(self.bot)
         for field in modal.children:
             field._value = 'Academy answer'
@@ -113,7 +131,7 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
         stats = await self.db.leaderboard(100, 10)
         self.assertEqual((stats[0]['accepted_count'], stats[0]['rejected_count']), (1, 0))
         history = await records(self.db, 100, 10)
-        self.assertEqual([r['key'] for r in history], [f"application:{app['id']}"])
+        self.assertEqual([r['key'] for r in history], [f'application:{app["id"]}'])
         with self.assertRaises(ApplicationDecisionError):
             await decide(self.bot, self.guild, self.recruiter, 30, accepted=True)
         self.applicant.add_roles.assert_awaited_once()
@@ -124,7 +142,8 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
         results = await asyncio.gather(
             decide(self.bot, self.guild, self.recruiter, 30, accepted=True),
             decide(self.bot, self.guild, self.recruiter, 30, accepted=False, reason='Недостаточно опыта'),
-            return_exceptions=True)
+            return_exceptions=True,
+        )
         self.assertEqual(sum(isinstance(x, dict) for x in results), 1)
         stats = (await self.db.leaderboard(100, 10))[0]
         self.assertEqual(stats['accepted_count'] + stats['rejected_count'], 1)
@@ -194,9 +213,15 @@ class ApplicationScenarios(unittest.IsolatedAsyncioTestCase):
     async def test_notification_failure_does_not_repeat_roles_or_statistics(self):
         await self.claimed()
         self.thread.send.side_effect = discord.DiscordException('notification unavailable')
-        i = NS(guild=self.guild, guild_id=100, channel=self.thread, channel_id=30,
-               user=self.recruiter, response=NS(defer=AsyncMock(), send_message=AsyncMock()),
-               followup=NS(send=AsyncMock()))
+        i = NS(
+            guild=self.guild,
+            guild_id=100,
+            channel=self.thread,
+            channel_id=30,
+            user=self.recruiter,
+            response=NS(defer=AsyncMock(), send_message=AsyncMock()),
+            followup=NS(send=AsyncMock()),
+        )
         action = RecruiterActionSelect(self.bot)
         action._values = ['accept']
         with self.assertRaises(discord.DiscordException):

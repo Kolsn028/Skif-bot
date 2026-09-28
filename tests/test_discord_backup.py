@@ -21,7 +21,9 @@ class DiscordStorage(unittest.IsolatedAsyncioTestCase):
         await self.db.set_config(2, high_staff_role_id=200)
         await self.db.bump_recruiter(1, 30, accepted=8, rejected=2)
         await self.db.bump_recruiter(2, 40, accepted=99)
-        await self.db.conn.execute("INSERT INTO family_events(guild_id,channel_id,creator_id,kind,title,starts_at,capacity) VALUES(1,50,30,'capt','test',1,10)")
+        await self.db.conn.execute(
+            "INSERT INTO family_events(guild_id,channel_id,creator_id,kind,title,starts_at,capacity) VALUES(1,50,30,'capt','test',1,10)"
+        )
         await self.db.conn.execute("INSERT INTO event_signups(event_id,member_id,joined_at,attended,confirmed_by) VALUES(1,60,'2026-09-14',1,30)")
         await self.db.conn.commit()
 
@@ -75,9 +77,11 @@ class DiscordStorage(unittest.IsolatedAsyncioTestCase):
         backups = DiscordBackups(bot)
         guild = SimpleNamespace(id=1)
         backup_channel, log_channel = SimpleNamespace(send=AsyncMock()), SimpleNamespace(send=AsyncMock())
+
         async def upload(**kwargs):
             blob = kwargs['file'].fp.getvalue()
             return SimpleNamespace(attachments=[SimpleNamespace(read=AsyncMock(return_value=blob))])
+
         backup_channel.send.side_effect = upload
         backups.ensure_channels = AsyncMock(return_value={'backup': backup_channel, 'logs': log_channel})
         with patch('bot.discord_backup.monotonic', return_value=100):
