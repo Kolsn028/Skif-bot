@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 import discord
 from ..timeutil import msk_today
 from ..ui import base_embed

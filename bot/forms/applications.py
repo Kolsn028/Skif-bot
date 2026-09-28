@@ -174,7 +174,6 @@ class RecruiterActionSelect(discord.ui.Select):
             return await interaction.followup.send("Эта заявка уже закрыта.", ephemeral=True)
 
         accepted = action == "accept"
-        status = "accepted" if accepted else "rejected"
         color = 0x3BAA72 if accepted else 0xD64045
         title = "✅ Кандидат принят" if accepted else "❌ По заявке отказ"
         from ..services.applications import decide, ApplicationDecisionError
