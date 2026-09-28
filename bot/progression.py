@@ -1,7 +1,7 @@
 """Private contract and promotion workflows. Evidence is checked by staff."""
 import discord
-from .interactions import SafeView, SafeModal, private_thread, serialized
-from .roles import configured_roles, HIGH_KEYS, STAFF_KEYS, notify_assistants, notify_recruiters
+from .interactions import SafeView, SafeModal, private_thread
+from .roles import configured_roles, STAFF_KEYS, notify_assistants, notify_recruiters
 from .ui import base_embed
 
 RULES = ('**1 → 3 ранг**\n'

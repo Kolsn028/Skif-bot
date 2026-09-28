@@ -3,7 +3,7 @@ import discord
 from .ui import base_embed, application_panel_embed, vacation_panel_embed
 from .views import ApplicationPanelView, VacationPanelView
 
-from .roles import ROLE_SPECS, configured_tier_roles, named_role, HIGH_KEYS
+from .roles import ROLE_SPECS, configured_tier_roles, named_role
 from .ui import application_banner_file
 from .events import EVENTS, EventPanelView, event_panel
 from .progression import ContractPanelView, PromotionPanelView, GreenPanelView, WarnPanelView, contract_panel_embed, promotion_panel_embed, green_panel_embed, warn_panel_embed
@@ -20,7 +20,7 @@ async def provision(bot, guild, selected):
         roles = {}
         warnings = []
         candidates = {}
-        for key, (name, color) in ROLE_SPECS.items():
+        for key, (_name, _color) in ROLE_SPECS.items():
             saved = guild.get_role(cfg.get(key) or 0)
             # Retain explicit choices after migration, otherwise resolve the requested hierarchy.
             if cfg.get('role_schema_version', 0) != 3 and key == 'family_role_id':
@@ -69,7 +69,7 @@ async def provision(bot, guild, selected):
         if ranked:
             positions = sorted([r.position for r in ranked], reverse=True)
             if len(set(positions)) == len(positions):
-                await guild.edit_role_positions(positions=dict(zip(ranked, positions)), reason='Skif: порядок рангов')
+                await guild.edit_role_positions(positions=dict(zip(ranked, positions, strict=False)), reason='Skif: порядок рангов')
 
 
         def overwrites(audience, write=False, reviewers=()):
@@ -168,7 +168,7 @@ async def provision(bot, guild, selected):
         await channel('green_panel_channel_id', '🟢・сдача-гринов', 'family_category_id', family, staff)
         await channel('warn_panel_channel_id', '⚠️・снятие-варнов', 'family_category_id', family, staff)
 
-        for kind, (emoji, name, color) in EVENTS.items():
+        for kind, (emoji, name, _color) in EVENTS.items():
             await channel(f'{kind}_panel_channel_id', f'{emoji}・{name}', 'events_category_id', family)
 
         panels = [('application', application_panel_embed, ApplicationPanelView),

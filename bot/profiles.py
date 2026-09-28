@@ -58,7 +58,6 @@ async def render(bot,guild,member,section='all',days=30,page=0):
     reports=sum(r['kind']=='report' and r['status']=='approved' for r in rows)
     contracts=sum(r['kind']=='contract' and r['status']=='approved' for r in rows)
     period=f'{days} дней' if days else 'Всё время'
-    cfg=await bot.db.get_config(guild.id)
     rank=next((r.name for r in reversed(member.roles) if not r.is_default()),'Участник')
     vac=await bot.db.pending_vacation_for_member(guild.id,member.id)
     state='🌴 На отдыхе' if vac and vac['status'] in ('applying','approved','return_pending','restoring') else '🟢 В составе'

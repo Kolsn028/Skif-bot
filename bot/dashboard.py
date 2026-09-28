@@ -95,7 +95,7 @@ class ManagementView(SafeView):
 
 class StatsPeriod(discord.ui.Select):
     def __init__(self,bot):
-        super().__init__(placeholder='Период',options=[discord.SelectOption(label=l,value=str(n)) for n,l in [(7,'Неделя'),(30,'Месяц'),(0,'Всё время')]]);self.bot=bot
+        super().__init__(placeholder='Период',options=[discord.SelectOption(label=text,value=str(n)) for n,text in [(7,'Неделя'),(30,'Месяц'),(0,'Всё время')]]);self.bot=bot
     async def callback(self,i):
         if not await high(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
         from .enhancements import recruiter_board

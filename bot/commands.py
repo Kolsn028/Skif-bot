@@ -1,8 +1,7 @@
 from __future__ import annotations
-from datetime import datetime
 import discord
 from discord import app_commands
-from .ui import application_panel_embed,vacation_panel_embed,base_embed,activity_type_label,application_banner_file
+from .ui import application_panel_embed,vacation_panel_embed,base_embed,application_banner_file
 from .views import ApplicationPanelView,VacationPanelView
 
 

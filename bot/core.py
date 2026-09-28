@@ -1,7 +1,9 @@
 from __future__ import annotations
 from .access import may_use_legacy_admin
 from .timeutil import msk_today
-import os, re, asyncio, logging
+import os
+import asyncio
+import logging
 from collections import OrderedDict
 from datetime import date, datetime, timezone
 from aiohttp import web
@@ -11,7 +13,7 @@ from discord.ext import commands, tasks
 from .ui import base_embed
 
 log = logging.getLogger(__name__)
-from .roles import has_role, is_leader, is_family, may_recruit, may_review_reports, configured_roles, HIGH_KEYS, STAFF_KEYS, may_promote, may_review_vacation, may_manage_recruiters
+from .roles import is_family, may_recruit, may_review_reports, may_promote, may_review_vacation, may_manage_recruiters
 
 class _OperationLocks:
     """Bounded registry of per-operation asyncio locks (LRU eviction)."""

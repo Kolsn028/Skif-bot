@@ -23,7 +23,7 @@ def parse_time(value,day=None,now=None):
             clock=datetime.strptime(value.strip(), '%H:%M').time()
             dt=datetime.combine(day,clock,tzinfo=zone)
     except ValueError:
-        raise ValueError('Укажи время ЧЧ:ММ, например 20:00, или полную дату в режиме «Другая дата». Время московское.')
+        raise ValueError('Укажи время ЧЧ:ММ, например 20:00, или полную дату в режиме «Другая дата». Время московское.') from None
     if dt<=now:raise ValueError('Это время уже прошло. Выбери другое время или завтра.')
     return int(dt.timestamp())
 
@@ -74,10 +74,10 @@ class CreateEventModal(SafeModal, title='Создать сбор • Skif'):
             return await i.response.send_message('Создают только Хай, Дэп Овнер и Овнер.',ephemeral=True)
         ts=parse_time(str(self.date_input),self.day)
         try: capacity=int(str(self.limit_input))
-        except ValueError: raise ValueError('Количество мест — целое число от 1 до 100.')
+        except ValueError: raise ValueError('Количество мест — целое число от 1 до 100.') from None
         if not 1 <= capacity <= 100: raise ValueError('Количество мест — от 1 до 100.')
         try: reserve=int(str(self.reserve_input))
-        except ValueError: raise ValueError('Резерв — целое число.')
+        except ValueError: raise ValueError('Резерв — целое число.') from None
         if not 0<=reserve<=99 or capacity+reserve>100: raise ValueError('Основа + резерв — не больше 100 мест.')
         cfg=await self.bot.db.get_config(i.guild_id)
         ch=i.guild.get_channel(cfg.get(f'{self.kind}_panel_channel_id') or 0)
@@ -220,7 +220,7 @@ class LimitsModal(SafeModal,title='Лимиты сбора'):
     async def on_submit(self,i):
         if not await allowed(self.bot,i):return await i.response.send_message('Только Хай и выше.',ephemeral=True)
         try:main,reserve=int(str(self.main)),int(str(self.reserve))
-        except ValueError:raise ValueError('Укажи целые числа.')
+        except ValueError:raise ValueError('Укажи целые числа.') from None
         await i.response.defer(ephemeral=True)
         async with self.bot.operation_locks[('event',i.guild_id,self.message_id)]:
             row=await event_row(self.bot,i.guild_id,self.message_id)
