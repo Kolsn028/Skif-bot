@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import discord
 
+from ..theme import DANGER, SUCCESS
 from ..interactions import SafeModal, SafeView
 from ..roles import notify_assistants
 from ..ui import activity_type_label, base_embed
@@ -76,7 +77,7 @@ class RejectActivityModal(SafeModal, title='Отклонить активнос�
             sub['id'], status='rejected', note=str(self.reason), handled_by=interaction.user.id, updated_at=self.bot.now_iso()
         )
         e = self.message.embeds[0].copy()
-        e.color = 0xD64045
+        e.color = DANGER
         e.set_field_at(2, name='Статус', value=f'❌ Отклонено • {interaction.user.mention}\nПричина: {str(self.reason)[:500]}', inline=False)
         await interaction.response.edit_message(embed=e, view=None)
 
@@ -102,7 +103,7 @@ class ActivityReviewView(SafeView):
             return await interaction.response.send_message('Отчёт уже обработан.', ephemeral=True)
         await self.bot.db.update_activity(sub['id'], status='approved', handled_by=interaction.user.id, updated_at=self.bot.now_iso())
         e = interaction.message.embeds[0].copy()
-        e.color = 0x3BAA72
+        e.color = SUCCESS
         e.set_field_at(2, name='Статус', value=f'✅ Засчитано • {interaction.user.mention}', inline=False)
         await interaction.response.edit_message(embed=e, view=None)
         await self.bot.update_inactivity_report(interaction.guild)

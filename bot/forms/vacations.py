@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import discord
+from ..theme import DANGER, SUCCESS
 from ..timeutil import msk_today
 from ..ui import base_embed
 from ..roles import configured_roles, HIGH_KEYS, notify_assistants
@@ -117,7 +118,7 @@ class VacationDecisionView(SafeView):
                 await self.bot.db.update_vacation(vac['id'], status='rejected', updated_at=self.bot.now_iso())
             await self.bot.db.update_vacation(vac['id'], handled_by=interaction.user.id)
         e = interaction.message.embeds[0].copy()
-        e.color = 0x3BAA72 if approve else 0xD64045
+        e.color = SUCCESS if approve else DANGER
         e.set_field_at(2, name='Статус', value=('✅ Одобрено' if approve else '❌ Отклонено') + f' • {interaction.user.mention}', inline=False)
         await interaction.edit_original_response(embed=e, view=None)
         await self.bot.update_vacation_status(interaction.guild)

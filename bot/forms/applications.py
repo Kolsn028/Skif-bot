@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import discord
+from ..theme import DANGER, SUCCESS
 from ..ui import base_embed
 from ..recruiting import update_assignment_card, interview_room
 from ..roles import notify_recruiters, application_recruiters
@@ -212,7 +213,7 @@ class RecruiterActionSelect(discord.ui.Select):
             return await interaction.followup.send('Эта заявка уже закрыта.', ephemeral=True)
 
         accepted = action == 'accept'
-        color = 0x3BAA72 if accepted else 0xD64045
+        color = SUCCESS if accepted else DANGER
         title = '✅ Кандидат принят' if accepted else '❌ По заявке отказ'
         from ..services.applications import decide, ApplicationDecisionError
 
@@ -233,7 +234,7 @@ class RecruiterActionSelect(discord.ui.Select):
                     base_embed(
                         f'Принят • заявка #{app["id"]}',
                         f'Кандидат: <@{app["applicant_id"]}>\nРанг: **Academy**\nРешение: {interaction.user.display_name}',
-                        0x3BAA72,
+                        SUCCESS,
                     ),
                 )
         await self.bot.send_or_update_leaderboard(interaction.guild)
