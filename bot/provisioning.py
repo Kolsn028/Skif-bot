@@ -7,16 +7,6 @@ from .views import ApplicationPanelView, VacationPanelView
 from .roles import ROLE_SPECS, configured_tier_roles, named_role
 from .ui import application_banner_file
 from .events import EVENTS, EventPanelView, event_panel
-from .progression import (
-    ContractPanelView,
-    PromotionPanelView,
-    GreenPanelView,
-    WarnPanelView,
-    contract_panel_embed,
-    promotion_panel_embed,
-    green_panel_embed,
-    warn_panel_embed,
-)
 
 
 async def provision(bot, guild, selected):
@@ -214,21 +204,12 @@ async def provision(bot, guild, selected):
         await channel('activity_log_channel_id', '📊・журнал-активности', 'management_category_id', staff)
         await channel('inactivity_report_channel_id', '📉・контроль-неактива', 'management_category_id', staff)
 
-        await channel('contract_panel_channel_id', '🟠・активация-контрактов', 'family_category_id', family, staff)
-        await channel('promotion_panel_channel_id', '😎・система-повышения', 'family_category_id', family, staff)
-        await channel('green_panel_channel_id', '🟢・сдача-гринов', 'family_category_id', family, staff)
-        await channel('warn_panel_channel_id', '⚠️・снятие-варнов', 'family_category_id', family, staff)
-
         for kind, (emoji, name, _color) in EVENTS.items():
             await channel(f'{kind}_panel_channel_id', f'{emoji}・{name}', 'events_category_id', family)
 
         panels = [
             ('application', application_panel_embed, ApplicationPanelView),
             ('vacation', vacation_panel_embed, VacationPanelView),
-            ('contract', contract_panel_embed, ContractPanelView),
-            ('promotion', promotion_panel_embed, PromotionPanelView),
-            ('green', green_panel_embed, GreenPanelView),
-            ('warn', warn_panel_embed, WarnPanelView),
         ]
         panels += [(kind, lambda k=kind: event_panel(k), EventPanelView) for kind in EVENTS]
         cfg = await bot.db.get_config(guild.id)
@@ -264,13 +245,17 @@ async def provision(bot, guild, selected):
         await bot.update_inactivity_report(guild)
         if not guild.chunked:
             await guild.chunk(cache=True)
-        # Existing open contract threads also need the newly authorized recruiters.
-        contract_parent = channels['contract_panel_channel_id']
+        # Открытые заявки (контракты, повышения, гринов, варнов) живут в хабе «профиль»; ветки старых каналов тоже получают рекрутов.
+        from .hub import find_hub
+
+        legacy = (guild.get_channel(cfg.get(f'{kind}_panel_channel_id') or 0) for kind in ('contract', 'promotion', 'green', 'warn'))
+        parents = {c.id for c in (await find_hub(bot, guild), *legacy) if c}
         for thread in guild.threads:
-            if thread.parent_id in (contract_parent.id, channels['promotion_panel_channel_id'].id):
+            if thread.parent_id in parents:
                 for member in recruiter.members:
                     if not member.bot:
                         await thread.add_user(member)
+
         from .membership import repair_members
 
         repaired = await repair_members(bot, guild, roles)
@@ -292,7 +277,7 @@ async def provision(bot, guild, selected):
         result = base_embed('Сервер готов • Skif', 'Разделы и панели настроены. Повторный запуск обновляет эту структуру.')
         result.add_field(
             name='Начало работы',
-            value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation', 'green', 'warn')),
+            value='\n'.join(channels[f'{kind}_panel_channel_id'].mention for kind in ('application', 'vacation')),
             inline=False,
         )
         result.add_field(name='Роли', value='\n'.join(f'{name}: {roles[key].mention}' for key, (name, _) in ROLE_SPECS.items()), inline=False)
@@ -316,4 +301,10 @@ async def provision(bot, guild, selected):
         from .hub import install as install_hub
 
         await install_hub(bot, guild)
+        from .hub import find_hub
+
+        hub = await find_hub(bot, guild)
+        if hub:
+            start = result.fields[0]
+            result.set_field_at(0, name=start.name, value=f'{start.value}\n{hub.mention}', inline=False)
         return result

@@ -50,6 +50,7 @@ async def records(db, guild_id, member_id, days=0):
                 category=e['kind'],
                 kind='visit',
                 status='approved' if e['attended'] else 'pending',
+                event_id=e['id'],
                 title=e['title'],
                 date=datetime.fromtimestamp(e['starts_at'], timezone.utc).isoformat(),
                 url=f'https://discord.com/channels/{guild_id}/{e["channel_id"]}/{e["message_id"]}',
@@ -73,6 +74,7 @@ async def records(db, guild_id, member_id, days=0):
                 title=f'Отчёт #{r["id"]}',
                 date=r['created_at'],
                 points=r['points'] if r['status'] == 'approved' else 0,
+                event_id=r.get('event_id'),
                 url=f'https://discord.com/channels/{guild_id}/{r["case_channel_id"]}/{r["source_message_id"]}',
                 detail=STATUS.get(r['status'], r['status']) + (f' · сбор #{r["event_id"]}' if r.get('event_id') else ''),
             )
