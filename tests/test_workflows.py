@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 
 from bot.database import Database
+from bot.hub import HUB_TITLE
 from bot.interactions import private_thread
 from bot.provisioning import provision
 from bot.ui import application_panel_embed, vacation_panel_embed
@@ -123,10 +124,7 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
                     return []
                 rows = []
                 for row_dict in view.to_components():
-                    children = [
-                        SimpleNamespace(custom_id=cd.get('custom_id'), to_dict=lambda d=cd: d)
-                        for cd in row_dict.get('components', [])
-                    ]
+                    children = [SimpleNamespace(custom_id=cd.get('custom_id'), to_dict=lambda d=cd: d) for cd in row_dict.get('components', [])]
                     rows.append(SimpleNamespace(to_dict=lambda r=row_dict: r, children=children))
                 return rows
 
@@ -184,13 +182,15 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         await provision(bot, guild, {})
         self.assertEqual(len(channels), initial)
         self.assertEqual(guild.create_role.await_count, initial_roles)
-        # 10 provision panels + one profile hub panel; identical hub content is not re-edited.
-        hub = [m for m in messages.values() if m.embeds and m.embeds[0].title == '📋 Профиль и заявки']
+        # 6 provision panels (заявка, отдых, 4 МП) + one profile hub panel; identical hub content is not re-edited.
+        hub = [m for m in messages.values() if m.embeds and m.embeds[0].title == HUB_TITLE]
         self.assertEqual(len(hub), 1)
-        self.assertEqual(len(messages), 11)
-        panels = [m for m in messages.values() if not (m.embeds and m.embeds[0].title == '📋 Профиль и заявки')]
+        self.assertEqual(len(messages), 7)
+        panels = [m for m in messages.values() if not (m.embeds and m.embeds[0].title == HUB_TITLE)]
         self.assertTrue(all(m.edit.await_count == 1 for m in panels))
         cfg = await self.db.get_config(1)
+        for key in ('contract', 'promotion', 'green', 'warn'):
+            self.assertFalse(cfg.get(f'{key}_panel_channel_id'), 'старые каналы заявок больше не создаются')
         staff = channels[cfg['applications_log_channel_id']]
         self.assertFalse(staff.overwrites[guild.default_role].view_channel)
         parent = channels[cfg['applications_parent_channel_id']]
