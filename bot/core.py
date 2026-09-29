@@ -41,6 +41,14 @@ class _OperationLocks:
         return lock
 
 
+def make_intents() -> discord.Intents:
+    """Server Members (роли/состав) и Message Content (скриншоты в ветках контрактов, гринов, варнов)."""
+    intents = discord.Intents.default()
+    intents.members = True
+    intents.message_content = True
+    return intents
+
+
 class SkifBot(commands.Bot):
     def __init__(self, *args, db, **kwargs):
         super().__init__(*args, **kwargs)
