@@ -11,6 +11,7 @@
 | Отдых и возвращение | bot/services/leave.py, bot/leave.py, bot/forms/vacations.py | test_access_control.py |
 | Классификация и проверка активности | bot/forms/activities.py | test_forms_compatibility.py, test_workflows.py |
 | Контракты и повышения | bot/progression.py, bot/services/ranks.py | test_progression.py |
+| Общий канал профиля и заявки | bot/hub.py, bot/progression.py | test_progression.py, test_tiers.py |
 | Тиры, tiercheck, доступ к веткам | bot/tiers.py | test_tiers.py |
 | МП: карточки, основной и запасной состав | bot/events.py, bot/roster.py | test_events.py |
 | Профили участников и панели управления | bot/profiles.py, bot/dashboard.py | test_dashboard.py |
