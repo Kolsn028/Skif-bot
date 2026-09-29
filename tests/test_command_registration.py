@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import discord
 
-from bot.core import SkifBot
+from bot.core import SkifBot, make_intents
 from bot.database import Database
 
 EXPECTED = {
@@ -28,6 +28,14 @@ EXPECTED = {
     'management',
     'my_requests',
 }
+
+
+class IntentsTest(unittest.TestCase):
+    def test_message_content_and_members_enabled(self):
+        """Без message_content бот не видит вложения и отклоняет проверку скриншотов."""
+        intents = make_intents()
+        self.assertTrue(intents.message_content)
+        self.assertTrue(intents.members)
 
 
 class CommandRegistrationTest(unittest.IsolatedAsyncioTestCase):
