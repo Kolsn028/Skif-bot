@@ -2,20 +2,48 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime, timezone
 import discord
-from ..theme import DANGER, SUCCESS
+from ..theme import DANGER, SUCCESS, WARNING
 from ..ui import base_embed
-from ..recruiting import update_assignment_card, interview_room
+from ..recruiting import update_assignment_card, interview_room, set_card_status
 from ..roles import notify_recruiters, application_recruiters
 from ..interactions import SafeModal, SafeView, serialized, private_thread
 
 
-class ApplicationModal(SafeModal, title='Подать заявку'):
-    real_name_age = discord.ui.TextInput(label='Имя, возраст IRL и игровой ник', max_length=160)
-    majestic_experience = discord.ui.TextInput(label='Ваш опыт на Majestic', max_length=500)
-    shooting_skill = discord.ui.TextInput(label='Откат / уровень стрельбы', required=False, max_length=300)
-    level_online_tz = discord.ui.TextInput(label='LVL, онлайн и часовой пояс', max_length=200)
-    family_experience = discord.ui.TextInput(label='Опыт в семьях — где состояли?', style=discord.TextStyle.paragraph, max_length=900)
+def build_application_card(user, app_id, real_name_age, majestic_experience, shooting_skill, level_online_tz, family_experience):
+    """Карточка анкеты в приватной ветке. Поля «Статус» и «Ответственный» обновляются по имени."""
+    e = base_embed(f'📋 Заявка #{app_id}', f'{user.mention} • `{user.id}`\nПодана <t:{int(datetime.now(timezone.utc).timestamp())}:R>', WARNING)
+    e.set_author(name=user.display_name, icon_url=user.display_avatar.url)
+    e.set_thumbnail(url=user.display_avatar.url)
+    e.add_field(name='👤 Имя, возраст, ник', value=str(real_name_age)[:1024], inline=True)
+    e.add_field(name='📊 LVL, онлайн, пояс', value=str(level_online_tz)[:1024], inline=True)
+    e.add_field(name='🎯 Откат, стрельба', value=(str(shooting_skill) or 'Не указано')[:1024], inline=True)
+    e.add_field(name='🎮 Опыт на Majestic', value=str(majestic_experience)[:1024], inline=False)
+    e.add_field(name='🏠 Опыт в семьях', value=str(family_experience)[:1024], inline=False)
+    e.add_field(name='Статус', value='🟡 На рассмотрении', inline=True)
+    e.add_field(name='Ответственный', value='Свободна — нажми «Взять заявку»', inline=True)
+    return e
+
+
+class ApplicationModal(SafeModal, title='Заявка в SKIF Family'):
+    real_name_age = discord.ui.TextInput(label='Имя, возраст и игровой ник', placeholder='Иван, 19 лет, Ivan_Skif', min_length=3, max_length=160)
+    majestic_experience = discord.ui.TextInput(
+        label='Опыт на Majestic', placeholder='Сколько играешь, на каком сервере, чем занимался', min_length=3, max_length=500
+    )
+    shooting_skill = discord.ui.TextInput(
+        label='Откат или уровень стрельбы', placeholder='Ссылка на откат или уровень. Можно пропустить', required=False, max_length=300
+    )
+    level_online_tz = discord.ui.TextInput(
+        label='LVL, онлайн и часовой пояс', placeholder='45 lvl, 5 часов в день, МСК+2', min_length=3, max_length=200
+    )
+    family_experience = discord.ui.TextInput(
+        label='Опыт в семьях',
+        placeholder='Где состоял, сколько времени, почему ушёл. Если не состоял, так и напиши',
+        style=discord.TextStyle.paragraph,
+        min_length=2,
+        max_length=900,
+    )
 
     def __init__(self, bot):
         super().__init__(timeout=300)
@@ -67,15 +95,9 @@ class ApplicationModal(SafeModal, title='Подать заявку'):
             raise
 
         await self.bot.db.update_application(app_id, thread_id=thread.id)
-        e = base_embed(f'📋 Заявка #{app_id} • {interaction.user.display_name}', f'Кандидат: {interaction.user.mention}\nID: `{interaction.user.id}`')
-        e.set_thumbnail(url=interaction.user.display_avatar.url)
-        e.add_field(name='👤 Имя / возраст / ник', value=str(self.real_name_age)[:1024], inline=False)
-        e.add_field(name='🎮 Опыт Majestic', value=str(self.majestic_experience)[:1024], inline=False)
-        e.add_field(name='🎯 Стрельба / откат', value=(str(self.shooting_skill) or 'Не указано')[:1024], inline=False)
-        e.add_field(name='📊 LVL / онлайн / часовой пояс', value=str(self.level_online_tz)[:1024], inline=False)
-        e.add_field(name='🏠 Опыт в семьях', value=str(self.family_experience)[:1024], inline=False)
-        e.add_field(name='Статус', value='🟡 На рассмотрении', inline=False)
-        e.add_field(name='Ответственный', value='Свободна — нажми «Взять заявку»', inline=False)
+        e = build_application_card(
+            interaction.user, app_id, self.real_name_age, self.majestic_experience, self.shooting_skill, self.level_online_tz, self.family_experience
+        )
         try:
             await thread.send(content=None, embed=e, view=RecruiterActionView(self.bot))
         except Exception:
@@ -83,13 +105,20 @@ class ApplicationModal(SafeModal, title='Подать заявку'):
             await thread.delete(reason='Skif: не удалось отправить анкету')
             raise
 
-        await notify_recruiters(thread, interaction.guild, cfg, base_embed('📥 Новая заявка', 'Рекруты, возьмите заявку на проверку.'))
+        await notify_recruiters(
+            thread,
+            interaction.guild,
+            cfg,
+            base_embed('📥 Новая заявка', f'Кандидат: {interaction.user.mention}\nРекруты, возьмите заявку в работу.', WARNING),
+        )
         log = await log_ch.send(
             allowed_mentions=discord.AllowedMentions.none(),
             embed=base_embed(f'📥 Новая заявка #{app_id}', f'{interaction.user.mention}\nВетка: {thread.mention}'),
         )
         await self.bot.db.update_application(app_id, log_message_id=log.id)
-        await interaction.followup.send(f'✅ Заявка **#{app_id}** отправлена: {thread.mention}', ephemeral=True)
+        await interaction.followup.send(
+            f'✅ Заявка **#{app_id}** отправлена. Рекрут ответит в твоей ветке: {thread.mention}. Её видишь только ты и рекруты.', ephemeral=True
+        )
 
 
 class ApplicationPanelView(SafeView):
@@ -112,15 +141,17 @@ class RecruiterActionSelect(discord.ui.Select):
     def __init__(self, bot):
         self.bot = bot
         super().__init__(
-            placeholder='Действия рекрутера…',
+            placeholder='Решение по заявке…',
             min_values=1,
             max_values=1,
             custom_id='skif:recruiter:action',
             options=[
-                discord.SelectOption(label='Принять кандидата', value='accept', emoji='✅'),
-                discord.SelectOption(label='Вызвать на обзвон', value='interview', emoji='📞'),
-                discord.SelectOption(label='Отложить', value='hold', emoji='⏳'),
-                discord.SelectOption(label='Отказать', value='reject', emoji='❌'),
+                discord.SelectOption(label='Принять кандидата', value='accept', emoji='✅', description='Выдать роль Academy и закрыть заявку'),
+                discord.SelectOption(
+                    label='Вызвать на обзвон', value='interview', emoji='📞', description='Пригласить в голосовой канал на 15 минут'
+                ),
+                discord.SelectOption(label='Отложить', value='hold', emoji='⏳', description='Оставить на рассмотрении'),
+                discord.SelectOption(label='Отказать', value='reject', emoji='❌', description='Указать причину и закрыть заявку'),
             ],
         )
 
@@ -195,6 +226,7 @@ class RecruiterActionSelect(discord.ui.Select):
                     )
                 except discord.Forbidden:
                     pass
+            await set_card_status(getattr(interaction, 'message', None), '📞 На обзвоне')
             return await interaction.followup.send(f'📞 Вызов отправлен. Канал: {voice_ch.mention}, резерв — 15 минут.', ephemeral=True)
 
         if action == 'hold':
@@ -206,6 +238,7 @@ class RecruiterActionSelect(discord.ui.Select):
                 handled_by=interaction.user.id,
                 updated_at=self.bot.now_iso(),
             )
+            await set_card_status(getattr(interaction, 'message', None), '⏳ Отложена')
             await interaction.followup.send('⏳ Оставлено на рассмотрении.', ephemeral=True)
             return
 
@@ -223,6 +256,7 @@ class RecruiterActionSelect(discord.ui.Select):
             return await interaction.followup.send(str(exc), ephemeral=True)
 
         await interaction.followup.send('✅ Решение сохранено.', ephemeral=True)
+        await set_card_status(getattr(interaction, 'message', None), '✅ Принят' if accepted else '❌ Отказано', color)
         await interaction.channel.send(embed=base_embed(title, f'Рекрутер: {interaction.user.mention}\nКандидат: <@{app["applicant_id"]}>', color))
         if accepted:
             log_ch = interaction.guild.get_channel(cfg.get('applications_log_channel_id') or 0)
