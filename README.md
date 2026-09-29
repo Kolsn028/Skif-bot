@@ -1,6 +1,6 @@
 # Skif Discord bot
 
-![Skif](assets/Gemini_Generated_Image_kw66t9kw66t9kw66(1).jpg)
+![Skif](assets/skif-banner.png)
 
 Python 3.12; discord.py; SQLite с резервными копиями в Discord.
 
@@ -23,7 +23,7 @@ Python 3.12; discord.py; SQLite с резервными копиями в Discor
 
 ## Быстрый старт
 
-1. Создайте приложение и бота на https://discord.com/developers/applications, включите intents **Server Members** и **Message Content**, добавьте бота на сервер с правами Manage Channels, Manage Roles, Manage Threads.
+1. Создайте приложение и бота на https://discord.com/developers/applications, включите intents **Server Members** и **Message Content** (последний нужен, чтобы бот видел скриншоты в ветках контрактов, гринов и варнов), добавьте бота на сервер с правами Manage Channels, Manage Roles, Manage Threads.
 2. Скопируйте `.env.example` в `.env` и заполните: `DISCORD_TOKEN`, `GUILD_ID`. Роли tiercheck и тиров бот создаёт/привязывает автоматически; ID в `.env` необязательны.
 3. `pip install -r requirements.txt` и `python main.py`.
 4. На сервере участник с ролью Овнер запускает `/setup` — бот создаст категории, каналы, панели и недостающие роли.
