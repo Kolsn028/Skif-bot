@@ -4,13 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
+from .theme import SUCCESS, WARNING
 from . import roster
 from .access import may_manage_events
 from .interactions import SafeModal, SafeView
 from .performance import coalesced_panel, edit_if_changed
 from .ui import base_embed
 
-EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', 0x3BAA72), 'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', 0xF39C12)}
+EVENTS = {'mcl': ('🟥', 'MCL', 0xED4245), 'vzm': ('🟩', 'VZM', SUCCESS), 'vzz': ('🟦', 'VZZ', 0x3498DB), 'capt': ('➕', 'плюсы-на-капт', WARNING)}
 
 
 def parse_time(value, day=None, now=None):

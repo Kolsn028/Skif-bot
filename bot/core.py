@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .theme import DANGER, SUCCESS
 from .access import may_use_legacy_admin
 from .timeutil import msk_today
 import os
@@ -45,6 +46,7 @@ class SkifBot(commands.Bot):
         super().__init__(*args, **kwargs)
         self.db = db
         self.health_runner = None
+        self._background_tasks = set()
         self.operation_locks = _OperationLocks(max_entries=2048)
 
     def now_iso(self):
@@ -56,57 +58,10 @@ class SkifBot(commands.Bot):
 
         self.backups = DiscordBackups(self)
         await self.backups.restore()
-        from .tiers import TierPanelView, TierReviewView
+        from .registry import persistent_views
 
-        self.add_view(TierPanelView(self))
-        self.add_view(TierReviewView(self))
-        from .dashboard import ManagementView
-
-        self.add_view(ManagementView(self))
-        from .views import (
-            ApplicationPanelView,
-            RecruiterActionView,
-            VacationPanelView,
-            VacationDecisionView,
-            ActivityClassifyView,
-            ActivityReviewView,
-        )
-
-        for view in (
-            ApplicationPanelView(self),
-            RecruiterActionView(self),
-            VacationPanelView(self),
-            VacationDecisionView(self),
-            ActivityClassifyView(self),
-            ActivityReviewView(self),
-        ):
+        for view in persistent_views(self):
             self.add_view(view)
-        from .progression import (
-            ContractPanelView,
-            GreenPanelView,
-            ProgressReviewView,
-            PromotionPanelView,
-            WarnPanelView,
-        )
-
-        for view in (
-            ContractPanelView(self),
-            GreenPanelView(self),
-            WarnPanelView(self),
-            PromotionPanelView(self),
-            ProgressReviewView(self),
-        ):
-            self.add_view(view)
-        from .profiles import ProfileLauncher
-
-        self.add_view(ProfileLauncher(self))
-        from .leave import ReturnDecisionView
-
-        self.add_view(ReturnDecisionView(self))
-        from .events import EventPanelView, EventView
-
-        self.add_view(EventPanelView(self))
-        self.add_view(EventView(self, legacy=True))
         gid = int(os.getenv('GUILD_ID')) if os.getenv('GUILD_ID') else None
         try:
             if gid:
@@ -124,7 +79,9 @@ class SkifBot(commands.Bot):
 
     async def _start_health(self):
         async def health(_):
-            return web.json_response({'ok': True})
+            return web.json_response(
+                {'ok': True, 'ready': self.is_ready(), 'latency_ms': None if self.latency != self.latency else round(self.latency * 1000)}
+            )
 
         app = web.Application()
         app.router.add_get('/', health)
@@ -274,6 +231,30 @@ class SkifBot(commands.Bot):
             'contract': 1,
         }.get(cat, 0)
 
+    async def on_interaction(self, interaction):
+        if interaction.type is not discord.InteractionType.component:
+            return
+        custom_id = (interaction.data or {}).get('custom_id', '')
+        if custom_id.startswith('skif:'):
+            task = asyncio.create_task(self._stale_button_fallback(interaction, custom_id))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+
+    async def _stale_button_fallback(self, interaction, custom_id):
+        """Если у кнопки нет живого обработчика, вместо «Ошибка взаимодействия» объясняем, что делать."""
+        await asyncio.sleep(2.5)
+        if interaction.response.is_done():
+            return
+        known = {getattr(item, 'custom_id', None) for view in self.persistent_views for item in view.children}
+        if custom_id in known:
+            return
+        try:
+            await interaction.response.send_message(
+                'Эта кнопка устарела и больше не работает. Открой актуальную панель в канале или напиши Хай.', ephemeral=True
+            )
+        except discord.HTTPException:
+            log.warning('Stale button fallback failed | custom_id=%s', custom_id)
+
     async def on_message(self, msg):
         from .enhancements import mark_staff_response
 
@@ -315,7 +296,7 @@ class SkifBot(commands.Bot):
         for r in rows:
             end = date.fromisoformat(r['end_date'])
             lines.append(f'🌴 <@{r["member_id"]}> — до **{end.strftime("%d.%m.%Y")}** · **{max((end - today).days, 0)} дн.** · возврат по заявке')
-        e = base_embed('🌴 Кто сейчас в отпуске', '\n'.join(lines) if lines else 'Сейчас активных отпусков нет.', 0x3BAA72)
+        e = base_embed('🌴 Кто сейчас в отпуске', '\n'.join(lines) if lines else 'Сейчас активных отпусков нет.', SUCCESS)
         ch = guild.get_channel(c.get('vacation_status_channel_id') or 0)
         if not isinstance(ch, discord.TextChannel):
             return None
@@ -359,7 +340,7 @@ class SkifBot(commands.Bot):
         e = base_embed(
             f'📉 Контроль неактива • {days}+ дней',
             '\n'.join(lines) if lines else '✅ Участников с таким неактивом нет.',
-            0xD64045 if lines else 0x3BAA72,
+            DANGER if lines else SUCCESS,
         )
         e.set_footer(text='Одобренный отпуск автоматически исключает участника из неактива.')
         ch = guild.get_channel(c.get('inactivity_report_channel_id') or 0)

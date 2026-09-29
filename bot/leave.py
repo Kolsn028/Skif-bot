@@ -2,6 +2,7 @@
 
 import json
 import discord
+from .theme import DANGER, SUCCESS
 from .roles import HIGH_KEYS, configured_roles, notify_assistants
 from .interactions import SafeModal, SafeView, private_thread
 from .ui import base_embed
@@ -86,7 +87,7 @@ class ReturnDecisionView(SafeView):
                     '✅ Восстановлен' if approve else '❌ Восстановление отклонено',
                     f'Участник: <@{vac["member_id"]}>\nРешение: {i.user.mention}\n'
                     + ('Возвращение одобрено, роль отдыха снята.' if approve else 'Отдых продолжается. Можно подать новую заявку.'),
-                    0x3BAA72 if approve else 0xD64045,
+                    SUCCESS if approve else DANGER,
                 ),
                 view=None,
                 allowed_mentions=discord.AllowedMentions.none(),

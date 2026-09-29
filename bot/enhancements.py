@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timezone, timedelta
 import discord
+from .theme import DANGER
 from .performance import edit_if_changed
 from .interactions import SafeModal
 from .roles import application_recruiters, HIGH_KEYS, has_role, is_leader
@@ -48,7 +49,7 @@ class RejectionModal(SafeModal, title='Причина отказа'):
                 embed=base_embed(
                     '❌ По заявке отказ',
                     f'Кандидат: <@{app["applicant_id"]}>\nРекрутер: {i.user.mention}\nПричина: {discord.utils.escape_markdown(reason)}',
-                    0xD64045,
+                    DANGER,
                 ),
                 allowed_mentions=discord.AllowedMentions.none(),
             )

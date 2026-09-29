@@ -1,6 +1,7 @@
 """Private contract and promotion workflows. Evidence is checked by staff."""
 
 import discord
+from .theme import DANGER, SUCCESS, WARNING
 from .interactions import SafeView, SafeModal, private_thread
 from .roles import configured_roles, STAFF_KEYS, notify_assistants, notify_recruiters
 from .ui import base_embed
@@ -37,17 +38,17 @@ def promotion_panel_embed():
 def green_panel_embed():
     return base_embed(
         '🟢 Сдача гринов',
-        'Нажми **Подать отчёт**, укажи **ник в игре** и приложи скрин с планшета.Отчёт попадёт в приватную ветку, проверяет Рекрут и выше.',
-        0x3BAA72,
+        'Нажми **Подать отчёт**, укажи **ник в игре** и приложи скрин с планшета. Отчёт попадёт в приватную ветку, проверяет Рекрут и выше.',
+        SUCCESS,
     )
 
 
 def warn_panel_embed():
     return base_embed(
         '⚠️ Снятие варнов',
-        'Нажми **Подать заявку**, укажи **ник в игре** и приложи скриншот сданного контракта или грина.'
+        'Нажми **Подать заявку**, укажи **ник в игре** и приложи скриншот сданного контракта или грина. '
         'Заявка попадёт в приватную ветку, проверяет Рекрут и выше.',
-        0xF39C12,
+        WARNING,
     )
 
 
@@ -228,7 +229,11 @@ class DecisionModal(SafeModal, title='Решение по заявке'):
                         break
                 if not evidence:
                     labels = {'contract': 'контракта', 'green': 'с планшета', 'warn': 'контракта или грина'}
-                    return await i.followup.send(f'Автор ещё не прикрепил скриншот {labels[row["kind"]]} в эту ветку.', ephemeral=True)
+                    return await i.followup.send(
+                        f'Автор ещё не прикрепил скриншот {labels[row["kind"]]} в эту ветку. '
+                        'Если скриншот есть, а бот его не видит, Овнеру нужно включить Message Content Intent в Discord Developer Portal.',
+                        ephemeral=True,
+                    )
             if self.accepted and row['kind'] == 'promotion':
                 await award_main(self.bot, i.guild, member)
             status = 'approved' if self.accepted else 'rejected'
@@ -238,7 +243,7 @@ class DecisionModal(SafeModal, title='Решение по заявке'):
                     '✅ Подтверждено' if self.accepted else '❌ Отклонено',
                     f'Участник: <@{row["member_id"]}>\nПроверил: {i.user.mention}\n{self.reason}'
                     + ('\n**3 ранг: main.** Роль Academy заменена; права сохранены.' if self.accepted and row['kind'] == 'promotion' else ''),
-                    0x3BAA72 if self.accepted else 0xD64045,
+                    SUCCESS if self.accepted else DANGER,
                 ),
                 allowed_mentions=discord.AllowedMentions.none(),
             )

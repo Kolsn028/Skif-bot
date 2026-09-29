@@ -1,6 +1,7 @@
 from __future__ import annotations
 import discord
 from discord import app_commands
+from .theme import DANGER, SUCCESS
 from .ui import application_panel_embed, vacation_panel_embed, base_embed, application_banner_file
 from .views import ApplicationPanelView, VacationPanelView
 
@@ -14,7 +15,7 @@ def admin_only():
     return app_commands.check(pred)
 
 
-def register_commands(bot):
+def _register_setup_commands(bot):
     async def setup_access(i):
         from .access import may_setup
         from .roles import named_role
@@ -77,6 +78,8 @@ def register_commands(bot):
 
     bot.tree.command(name='setup', description='Роли Skif, каналы и панели')(setup)
 
+
+def _register_panel_commands(bot):
     @bot.tree.command(name='panel_application', description='Отправить панель подачи заявки')
     @admin_only()
     async def panel_application(i: discord.Interaction, channel: discord.TextChannel):
@@ -97,6 +100,8 @@ def register_commands(bot):
         await bot.db.set_config(i.guild.id, vacation_panel_channel_id=channel.id, vacation_panel_message_id=m.id)
         await i.response.send_message(f'✅ {m.jump_url}', ephemeral=True)
 
+
+def _register_activity_commands(bot):
     @bot.tree.command(name='profile', description='Карточка активности участника')
     async def profile(i: discord.Interaction, member: discord.Member | None = None):
         from .profiles import open_profile
@@ -121,9 +126,7 @@ def register_commands(bot):
         rows = await bot.inactive_members(i.guild, days)
         lines = [f'⚠️ {m.mention} — **{d} дн.**' for m, d, _ in rows[:30]]
         await i.response.send_message(
-            embed=base_embed(
-                f'📉 Неактив • {days}+ дней', '\n'.join(lines) if lines else '✅ Таких участников нет.', 0xD64045 if lines else 0x3BAA72
-            ),
+            embed=base_embed(f'📉 Неактив • {days}+ дней', '\n'.join(lines) if lines else '✅ Таких участников нет.', DANGER if lines else SUCCESS),
             ephemeral=True,
         )
 
@@ -164,6 +167,8 @@ def register_commands(bot):
         m = await bot.update_inactivity_report(i.guild)
         await i.followup.send(f'✅ {m.jump_url}' if m else '⚠️ Канал не настроен.', ephemeral=True)
 
+
+def _register_admin_commands(bot):
     @bot.tree.command(name='config_show', description='Показать конфигурацию')
     @admin_only()
     async def config_show(i):
@@ -251,6 +256,12 @@ def register_commands(bot):
 
         await open_requests(bot, i, own=True)
 
+
+def register_commands(bot):
+    _register_setup_commands(bot)
+    _register_panel_commands(bot)
+    _register_activity_commands(bot)
+    _register_admin_commands(bot)
     for command in bot.tree.get_commands():
         command.guild_only = True
 

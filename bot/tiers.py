@@ -3,6 +3,7 @@
 import json
 import asyncio
 import discord
+from .theme import DANGER, SUCCESS
 from .performance import edit_if_changed
 from .interactions import SafeModal, SafeView, private_thread
 from .roles import STAFF_KEYS, configured_roles
@@ -176,7 +177,7 @@ class TierDecision(SafeModal):
                 f'Участник: <@{row["member_id"]}>\nРассмотрел: {i.user.mention}\n'
                 + ('Комментарий: ' if self.accepted else 'Причина отказа: ')
                 + discord.utils.escape_markdown(reason),
-                0x3BAA72 if self.accepted else 0xD64045,
+                SUCCESS if self.accepted else DANGER,
             )
             await i.channel.send(embed=e, allowed_mentions=discord.AllowedMentions.none())
             await self.bot.db.set_progress_decision(row['id'], status, i.user.id, reason)

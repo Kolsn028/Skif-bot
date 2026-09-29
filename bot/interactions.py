@@ -1,6 +1,8 @@
 import functools
 import logging
+import sqlite3
 
+import aiosqlite
 import discord
 
 log = logging.getLogger(__name__)
@@ -14,6 +16,12 @@ async def report_error(interaction, error):
         message = 'Сообщение или канал удалён. Открой актуальную панель; если её нет — сообщи Хай.'
     elif isinstance(error, ValueError):
         message = str(error)
+    elif isinstance(error, discord.HTTPException) and error.status == 429:
+        message = 'Discord временно ограничил запросы. Подожди минуту и повтори действие.'
+    elif isinstance(error, discord.HTTPException) and error.status >= 500:
+        message = 'Discord сейчас недоступен. Повтори действие через пару минут, данные не потеряны.'
+    elif isinstance(error, (sqlite3.Error, aiosqlite.Error)):
+        message = 'Не удалось сохранить данные. Повтори действие; если ошибка повторяется, сообщи Овнеру.'
     else:
         message = 'Не удалось завершить действие. Овнер может проверить журнал бота и настройки `/setup`.'
     try:
