@@ -156,6 +156,54 @@ class WarnRemovalModal(SafeModal, title="Снятие варнов • Skif"):
         await submit(self.bot, i, "warn", f"**Ник в игре:** {self.nickname}")
 
 
+class ContractPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label="Оформить контракт", emoji="🟠", style=discord.ButtonStyle.primary, custom_id="skif:contract:open")
+    async def open_contract(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message("Доступно участникам семьи.", ephemeral=True)
+        await i.response.send_modal(ContractModal(self.bot))
+
+
+class PromotionPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label="Подать на повышение", emoji="📈", style=discord.ButtonStyle.success, custom_id="skif:promotion:open")
+    async def open_promotion(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message("Доступно участникам семьи.", ephemeral=True)
+        await i.response.send_modal(PromotionModal(self.bot))
+
+
+class GreenPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label="Подать отчёт", emoji="🟢", style=discord.ButtonStyle.success, custom_id="skif:green:open")
+    async def open_green(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message("Доступно участникам семьи.", ephemeral=True)
+        await i.response.send_modal(GreenReportModal(self.bot))
+
+
+class WarnPanelView(SafeView):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label="Подать заявку", emoji="⚠️", style=discord.ButtonStyle.primary, custom_id="skif:warn:open")
+    async def open_warn(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message("Доступно участникам семьи.", ephemeral=True)
+        await i.response.send_modal(WarnRemovalModal(self.bot))
+
+
 class DecisionModal(SafeModal, title="Решение по заявке"):
     reason = discord.ui.TextInput(label="Что проверено / причина отказа", style=discord.TextStyle.paragraph, max_length=700)
     checklist = discord.ui.TextInput(
