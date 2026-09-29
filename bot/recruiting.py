@@ -12,11 +12,30 @@ async def update_assignment_card(message, owner_id):
     value = f'<@{owner_id}>' if owner_id else 'Свободна — нажми «Взять заявку»'
     for index, field in enumerate(embed.fields):
         if field.name == 'Ответственный':
-            embed.set_field_at(index, name='Ответственный', value=value, inline=False)
+            embed.set_field_at(index, name='Ответственный', value=value, inline=field.inline)
             break
     else:
         embed.add_field(name='Ответственный', value=value, inline=False)
     await message.edit(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+
+async def set_card_status(message, text, color=None):
+    """Обновляет поле «Статус» (и цвет) в карточке заявки; сбой не должен влиять на решение."""
+    try:
+        if not message or not message.embeds:
+            return
+        embed = message.embeds[0].copy()
+        for index, field in enumerate(embed.fields):
+            if field.name == 'Статус':
+                embed.set_field_at(index, name='Статус', value=text, inline=field.inline)
+                break
+        else:
+            return
+        if color is not None:
+            embed.color = color
+        await message.edit(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+    except discord.DiscordException:
+        pass
 
 
 async def interview_room(bot, guild, cfg, app):

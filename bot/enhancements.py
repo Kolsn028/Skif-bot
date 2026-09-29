@@ -45,6 +45,9 @@ class RejectionModal(SafeModal, title='Причина отказа'):
             except ApplicationDecisionError as exc:
                 return await i.followup.send(str(exc), ephemeral=True)
             await i.followup.send('Отказ и причина сохранены в истории игрока.', ephemeral=True)
+            from .recruiting import set_card_status
+
+            await set_card_status(getattr(i, 'message', None), '❌ Отказано', DANGER)
             await i.channel.send(
                 embed=base_embed(
                     '❌ По заявке отказ',
