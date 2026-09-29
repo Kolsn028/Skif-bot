@@ -79,7 +79,8 @@ class Hub(unittest.IsolatedAsyncioTestCase):
         kwargs = i.followup.send.await_args.kwargs
         self.assertTrue(kwargs['ephemeral'])
         self.assertIn('Nick', kwargs['embed'].title)
-        self.assertIs(kwargs['view'].origin, i)
+        self.assertTrue(kwargs['wait'])
+        self.assertIs(kwargs['view'].message, i.followup.send.return_value)
 
     async def test_stranger_cannot_open_menu(self):
         self.bot.is_family_member.return_value = False
@@ -133,16 +134,24 @@ class Hub(unittest.IsolatedAsyncioTestCase):
     async def test_history_and_back(self):
         await self.add_progress('contract', 'approved', 101, '**Помощь** • a\nСобытие: 1')
         view = hub.MemberMenuView(self.bot, 10, await hub.collect(self.bot, self.guild, member()))
-        view.origin = 'origin'
+        view.message = 'message'
         i = self.interaction()
         await view.history.callback(i)
         shown = i.edit_original_response.await_args.kwargs
         self.assertIn('Помощь', shown['embed'].description)
         self.assertIsInstance(shown['view'], hub.HistoryView)
-        self.assertEqual(shown['view'].origin, 'origin')
+        self.assertEqual(shown['view'].message, 'message')
         i2 = self.interaction()
         await shown['view'].back.callback(i2)
         self.assertIsInstance(i2.edit_original_response.await_args.kwargs['view'], hub.MemberMenuView)
+
+    async def test_menu_timeout_edits_only_private_message_not_public_panel(self):
+        i = self.interaction()
+        view = hub.MemberMenuView(self.bot, 10, await hub.collect(self.bot, self.guild, member()))
+        view.message = SimpleNamespace(edit=AsyncMock())
+        await view.on_timeout()
+        view.message.edit.assert_awaited_once_with(view=None)
+        i.edit_original_response.assert_not_awaited()  # так раньше пропадала кнопка панели
 
 
 if __name__ == '__main__':
