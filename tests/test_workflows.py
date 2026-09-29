@@ -114,6 +114,27 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
             ch.topic = kwargs.get('topic')
             ch.overwrites = kwargs.get('overwrites')
             ch.edit = AsyncMock()
+            sent = []
+
+            def fake_components(view):
+                # Mirror discord.Message.components: rows whose children carry custom_id
+                # and whose to_dict() reproduces view.to_components() for edit_if_changed.
+                if view is None:
+                    return []
+                rows = []
+                for row_dict in view.to_components():
+                    children = [
+                        SimpleNamespace(custom_id=cd.get('custom_id'), to_dict=lambda d=cd: d)
+                        for cd in row_dict.get('components', [])
+                    ]
+                    rows.append(SimpleNamespace(to_dict=lambda r=row_dict: r, children=children))
+                return rows
+
+            async def history(limit=None, **_kw):
+                for msg in reversed(sent):
+                    yield msg
+
+            ch.history = history
 
             async def send(**kw):
                 if kw.get('file'):
@@ -121,13 +142,20 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
                 msg = MagicMock(spec=discord.Message)
                 msg.id = next(sequence)
                 msg.author.id = 999
+                msg.components = fake_components(kw.get('view'))
+                msg.embeds = [kw['embed']] if kw.get('embed') else []
 
                 async def edit(**kwargs):
                     for file in kwargs.get('attachments', []):
                         file.close()
+                    if 'embed' in kwargs:
+                        msg.embeds = [kwargs['embed']]
+                    if 'view' in kwargs:
+                        msg.components = fake_components(kwargs['view'])
 
                 msg.edit = AsyncMock(side_effect=edit)
                 messages[msg.id] = msg
+                sent.append(msg)
                 return msg
 
             ch.send = AsyncMock(side_effect=send)
@@ -152,11 +180,16 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         )
         await provision(bot, guild, {})
         initial = len(channels)
+        initial_roles = guild.create_role.await_count
         await provision(bot, guild, {})
         self.assertEqual(len(channels), initial)
-        self.assertEqual(guild.create_role.await_count, 10)
-        self.assertEqual(len(messages), 10)
-        self.assertTrue(all(m.edit.await_count == 1 for m in messages.values()))
+        self.assertEqual(guild.create_role.await_count, initial_roles)
+        # 10 provision panels + one profile hub panel; identical hub content is not re-edited.
+        hub = [m for m in messages.values() if m.embeds and m.embeds[0].title == '📋 Профиль и заявки']
+        self.assertEqual(len(hub), 1)
+        self.assertEqual(len(messages), 11)
+        panels = [m for m in messages.values() if not (m.embeds and m.embeds[0].title == '📋 Профиль и заявки')]
+        self.assertTrue(all(m.edit.await_count == 1 for m in panels))
         cfg = await self.db.get_config(1)
         staff = channels[cfg['applications_log_channel_id']]
         self.assertFalse(staff.overwrites[guild.default_role].view_channel)
