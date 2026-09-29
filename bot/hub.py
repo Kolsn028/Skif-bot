@@ -198,7 +198,7 @@ class CabinetView(SafeView):
         super().__init__(timeout=600)
         self.bot = bot
         self.owner_id = owner_id
-        self.origin = None
+        self.message = None  # личное (ephemeral) сообщение меню, не публичная панель
 
     async def interaction_check(self, i):
         if i.user.id != self.owner_id:
@@ -207,14 +207,16 @@ class CabinetView(SafeView):
         return True
 
     async def on_timeout(self):
-        if self.origin:
+        # Нельзя вызывать edit_original_response у interaction кнопки панели: после defer() это
+        # редактирование самой публичной панели, и у неё пропадала кнопка «Открыть мой профиль».
+        if self.message:
             try:
-                await self.origin.edit_original_response(view=None)
+                await self.message.edit(view=None)
             except discord.HTTPException:
                 pass
 
     async def show(self, i, embed, view):
-        view.origin = self.origin
+        view.message = self.message
         self.stop()  # иначе таймер старого экрана уберёт кнопки у нового
         await i.edit_original_response(embed=embed, view=view, allowed_mentions=NO_MENTIONS)
 
@@ -296,8 +298,7 @@ class ProfileHubView(SafeView):
             return await i.response.send_message('Личный кабинет доступен участникам семьи.', ephemeral=True)
         await i.response.defer(ephemeral=True)
         embed, view = await build_menu(self.bot, i.guild, i.user)
-        view.origin = i
-        await i.followup.send(embed=embed, view=view, ephemeral=True, allowed_mentions=NO_MENTIONS)
+        view.message = await i.followup.send(embed=embed, view=view, ephemeral=True, wait=True, allowed_mentions=NO_MENTIONS)
 
 
 class LegacyHubView(SafeView):
