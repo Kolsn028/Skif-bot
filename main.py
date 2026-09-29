@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from bot.core import SkifBot
+from bot.core import SkifBot, make_intents
 from bot.database import Database
 
 logging.basicConfig(
@@ -22,9 +22,6 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 if not TOKEN:
     raise RuntimeError('DISCORD_TOKEN не задан. Создай .env по примеру .env.example')
 
-intents = discord.Intents.default()
-intents.members = True
-
-bot = SkifBot(command_prefix='!', intents=intents, db=Database(DATABASE_PATH), allowed_mentions=discord.AllowedMentions.none())
+bot = SkifBot(command_prefix='!', intents=make_intents(), db=Database(DATABASE_PATH), allowed_mentions=discord.AllowedMentions.none())
 
 bot.run(TOKEN)
