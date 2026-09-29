@@ -77,14 +77,14 @@ class RolePolicy(unittest.IsolatedAsyncioTestCase):
         await SkifBot.on_member_join(bot, user)
         self.assertEqual(user.add_roles.call_args.args, (role,))
 
-    def test_application_banner_is_bundled_and_text_is_short(self):
+    def test_application_banner_is_bundled_and_layout_is_stable(self):
         file = application_banner_file()
         self.assertEqual(file.fp.read(8), b'\x89PNG\r\n\x1a\n')
         file.close()
         e = application_panel_embed()
         self.assertEqual(e.image.url, 'attachment://skif-banner.png')
         self.assertLess(len(e.description), 220)
-        self.assertEqual(len(e.fields), 0)
+        self.assertEqual([f.name for f in e.fields], ['Как это работает', 'Что понадобится', 'После принятия'])
 
     async def test_assistant_pings_exclude_both_leaders_with_overlapping_roles(self):
         from bot.roles import notify_assistants
