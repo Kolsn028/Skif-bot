@@ -62,6 +62,10 @@ class SkifBot(commands.Bot):
 
         for view in persistent_views(self):
             self.add_view(view)
+        from .commands import register_commands
+
+        if not self.tree.get_commands():
+            register_commands(self)
         gid = int(os.getenv('GUILD_ID')) if os.getenv('GUILD_ID') else None
         try:
             if gid:
