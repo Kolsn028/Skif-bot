@@ -312,4 +312,8 @@ async def provision(bot, guild, selected):
 
         await migrate_guild(bot, guild)
         await bot.db.set_config(guild.id, server_layout_version=10)
+        # Install profile hub after tiers
+        from .hub import install as install_hub
+
+        await install_hub(bot, guild)
         return result
