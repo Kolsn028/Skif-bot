@@ -66,16 +66,17 @@ class Hub(unittest.IsolatedAsyncioTestCase):
     def fields(self, embed):
         return {f.name: f.value for f in embed.fields}
 
-    async def test_panel_has_one_button_and_legacy_ids_stay_registered(self):
-        self.assertEqual([c.custom_id for c in hub.ProfileHubView(self.bot).children], ['skif:hub:me'])
+    async def test_panel_buttons_and_legacy_ids_stay_registered(self):
+        self.assertEqual([c.custom_id for c in hub.ProfileHubView(self.bot).children], ['skif:hub:register', 'skif:hub:channel'])
+        self.assertEqual([c.custom_id for c in hub.PersonalPanelView(self.bot).children], ['skif:hub:me'])
         legacy = [c.custom_id for c in hub.LegacyHubView(self.bot).children]
         self.assertEqual(legacy, ['skif:hub:green', 'skif:hub:warn', 'skif:hub:contract', 'skif:hub:promotion', 'skif:hub:tier'])
         registered = {c.custom_id for v in persistent_views(MagicMock()) for c in v.children if getattr(c, 'custom_id', None)}
-        self.assertTrue({'skif:hub:me', *legacy} <= registered)
+        self.assertTrue({'skif:hub:me', 'skif:hub:register', 'skif:hub:channel', *legacy} <= registered)
 
     async def test_menu_opens_personally_for_each_member(self):
         i = self.interaction(member(10, [self.academy]))
-        await hub.ProfileHubView(self.bot).me.callback(i)
+        await hub.PersonalPanelView(self.bot).me.callback(i)
         kwargs = i.followup.send.await_args.kwargs
         self.assertTrue(kwargs['ephemeral'])
         self.assertIn('Nick', kwargs['embed'].title)
@@ -85,7 +86,7 @@ class Hub(unittest.IsolatedAsyncioTestCase):
     async def test_stranger_cannot_open_menu(self):
         self.bot.is_family_member.return_value = False
         i = self.interaction()
-        await hub.ProfileHubView(self.bot).me.callback(i)
+        await hub.PersonalPanelView(self.bot).me.callback(i)
         i.followup.send.assert_not_awaited()
         self.assertTrue(i.response.send_message.await_args.kwargs['ephemeral'])
 
