@@ -7,6 +7,7 @@ import discord
 from .access import TIER_GUILD_ID as GUILD_ID
 from .interactions import SafeView
 from .performance import edit_if_changed
+from . import rooms
 from .profiles import records
 from .roles import STAFF_KEYS, configured_roles
 from .services.ranks import TIER_ROLES
@@ -285,20 +286,54 @@ async def build_menu(bot, guild, member):
     return cabinet_embed(member, data), MemberMenuView(bot, member.id, data)
 
 
-class ProfileHubView(SafeView):
-    """Единая постоянная панель: каждому участнику кнопка открывает его личное меню."""
+class PersonalPanelView(SafeView):
+    """Кнопка личного меню в личном канале (и в старых сообщениях хаба с прежним custom_id)."""
 
     def __init__(self, bot):
         super().__init__(timeout=None)
         self.bot = bot
 
-    @discord.ui.button(label='Открыть мой профиль', emoji='🪪', style=discord.ButtonStyle.primary, custom_id='skif:hub:me')
+    @discord.ui.button(label='Открыть моё меню', emoji='🪪', style=discord.ButtonStyle.primary, custom_id='skif:hub:me')
     async def me(self, i, _):
         if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
             return await i.response.send_message('Личный кабинет доступен участникам семьи.', ephemeral=True)
         await i.response.defer(ephemeral=True)
         embed, view = await build_menu(self.bot, i.guild, i.user)
         view.message = await i.followup.send(embed=embed, view=view, ephemeral=True, wait=True, allowed_mentions=NO_MENTIONS)
+
+
+class ProfileHubView(SafeView):
+    """Общая панель хаба: регистрация (создаёт личный канал) и ссылка на свой канал."""
+
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label='Зарегистрироваться', emoji='📝', style=discord.ButtonStyle.success, custom_id='skif:hub:register')
+    async def register(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message('Регистрация доступна участникам семьи.', ephemeral=True)
+        await i.response.defer(ephemeral=True, thinking=True)
+        channel, created = await rooms.register_member(self.bot, i.guild, i.user)
+        text = f'Готово! Твой личный канал: {channel.mention}' if created else f'Ты уже зарегистрирован: {channel.mention}'
+        await i.followup.send(text, ephemeral=True, view=channel_link(channel), allowed_mentions=NO_MENTIONS)
+
+    @discord.ui.button(label='Мой канал', emoji='🗂️', style=discord.ButtonStyle.secondary, custom_id='skif:hub:channel')
+    async def my_channel(self, i, _):
+        if not isinstance(i.user, discord.Member) or not await self.bot.is_family_member(i.user):
+            return await i.response.send_message('Доступно участникам семьи.', ephemeral=True)
+        channel = await rooms.locate_room(self.bot, i.guild, i.user)
+        if not channel:
+            return await i.response.send_message('Личного канала ещё нет. Нажми «Зарегистрироваться».', ephemeral=True)
+        await i.response.send_message(
+            f'Твой личный канал: {channel.mention}', ephemeral=True, view=channel_link(channel), allowed_mentions=NO_MENTIONS
+        )
+
+
+def channel_link(channel):
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label='Открыть канал', style=discord.ButtonStyle.link, url=channel.jump_url))
+    return view
 
 
 class LegacyHubView(SafeView):
@@ -332,16 +367,15 @@ class LegacyHubView(SafeView):
 def hub_embed(bot):
     e = panel(
         HUB_TITLE,
-        'Всё, что нужно участнику Skif, в одном месте. Нажми кнопку ниже: меню откроется **только для тебя**.',
+        'Нажми **«Зарегистрироваться»**: бот создаст твой личный канал, который видишь только ты и руководство. Позже вернуться в него можно кнопкой **«Мой канал»**.',
         [
             (
-                'В КАБИНЕТЕ',
-                '📊 Твоя статистика и баллы\n📈 Путь к 3 рангу с прогрессом\n📂 Открытые заявки одним списком\n📜 История последних действий',
+                'ВЕТКИ В ЛИЧНОМ КАНАЛЕ',
+                '⚔️ капт  ·  🟩 взм  ·  🟦 взз  ·  🟥 мцл\n🟢 грины  ·  🟠 контракт  ·  ⚠️ варны',
             ),
-            ('МОЖНО ПОДАТЬ', '🟢 Сдачу гринов  ·  ⚠️ Снятие варнов\n🟠 Контракт  ·  📈 Повышение\n🏆 Заявку на тир'),
             (
-                'КАК ЭТО РАБОТАЕТ',
-                'Каждая заявка создаётся в **приватной ветке**: её видишь ты и проверяющие. Прикрепи скриншоты в ветку и дождись решения.',
+                'В ЛИЧНОМ МЕНЮ',
+                '📊 Статистика и баллы  ·  📈 Путь к 3 рангу\n📂 Открытые заявки  ·  📜 История\n🟢 Грины  ·  ⚠️ Варны  ·  🟠 Контракт  ·  📈 Повышение  ·  🏆 Тир',
             ),
         ],
         BRAND,

@@ -10,6 +10,7 @@ from .repositories.applications import ApplicationsRepository
 from .repositories.events import EventsRepository
 from .repositories.profiles import ProfilesRepository
 from .repositories.progress import ProgressRepository
+from .repositories.rooms import RoomsRepository
 from .repositories.writes import WriteRepository
 
 
@@ -34,7 +35,7 @@ class _TaskLocalLock:
         return False
 
 
-class Database(WriteRepository, ApplicationsRepository, ProgressRepository, EventsRepository, ProfilesRepository):
+class Database(WriteRepository, ApplicationsRepository, ProgressRepository, EventsRepository, ProfilesRepository, RoomsRepository):
     def __init__(self, path: str):
         self.path = path
         self.conn: aiosqlite.Connection | None = None
@@ -154,6 +155,16 @@ class Database(WriteRepository, ApplicationsRepository, ProgressRepository, Even
             UNIQUE(guild_id, channel_id)
         );
         CREATE INDEX IF NOT EXISTS idx_case_channel ON personal_cases(guild_id, channel_id);
+
+        CREATE TABLE IF NOT EXISTS member_rooms (
+            guild_id INTEGER NOT NULL,
+            member_id INTEGER NOT NULL,
+            channel_id INTEGER NOT NULL,
+            threads TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (guild_id, member_id),
+            UNIQUE (guild_id, channel_id)
+        );
 
         CREATE TABLE IF NOT EXISTS activity_submissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

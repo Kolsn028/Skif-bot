@@ -21,7 +21,7 @@ def persistent_views(bot):
         VacationDecisionView,
         VacationPanelView,
     )
-    from .hub import LegacyHubView, ProfileHubView
+    from .hub import LegacyHubView, PersonalPanelView, ProfileHubView
 
     return [
         TierPanelView(bot),
@@ -43,5 +43,6 @@ def persistent_views(bot):
         EventPanelView(bot),
         EventView(bot, legacy=True),
         ProfileHubView(bot),
+        PersonalPanelView(bot),
         LegacyHubView(bot),
     ]
