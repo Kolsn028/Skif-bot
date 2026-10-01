@@ -1,0 +1,38 @@
+[project]
+name = "skif-bot"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 150
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "C4", "DTZ", "RUF", "TRY", "BLE"]
+ignore = [
+    "E501",
+    "TRY003",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "E701",
+    "E702",
+    "E402",  # поздние импорты в модулях сделаны намеренно
+    "I001",
+    "C408",
+    "RUF005",
+    "RUF059",
+    "TRY004",
+    "TRY300",
+    "TRY301",
+    "BLE001",
+    "DTZ007",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"bot/roles.py" = ["F401"]  # совместимые реэкспорты из bot.access
+"bot/leave.py" = ["F401"]
+"bot/roster.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "single"
