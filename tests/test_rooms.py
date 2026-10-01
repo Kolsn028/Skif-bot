@@ -227,5 +227,135 @@ class HubButtons(Rooms):
         self.assertTrue(i.response.send_message.await_args.kwargs['ephemeral'])
 
 
+class FakeTree:
+    def __init__(self):
+        self.commands = {}
+
+    def command(self, name, **kwargs):
+        def decorate(func):
+            self.commands[name] = func
+            return func
+
+        return decorate
+
+    def get_commands(self):
+        return []
+
+    def error(self, func):
+        return func
+
+
+class FindChannelCommand(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        from bot.commands import register_commands
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db = Database(self.tmp.name + '/test.db')
+        await self.db.connect()
+        self.guild = FakeGuild()
+        self.bot = SimpleNamespace(
+            db=self.db,
+            user=SimpleNamespace(id=777),
+            operation_locks=defaultdict(asyncio.Lock),
+            now_iso=lambda: '2026-10-01T00:00:00+00:00',
+            tree=FakeTree(),
+        )
+        register_commands(self.bot)
+        self.commands = self.bot.tree.commands
+
+    async def asyncTearDown(self):
+        await self.db.close()
+        self.tmp.cleanup()
+
+    def interaction(self, user, guild_id=GUILD):
+        i = MagicMock(spec=discord.Interaction)
+        i.user = user
+        i.guild_id = guild_id
+        i.guild = self.guild
+        i.response = SimpleNamespace(send_message=AsyncMock())
+        return i
+
+    async def test_high_staff_gets_link_and_others_are_denied(self):
+        from bot import access
+
+        self.assertIn('канал', self.commands)
+        target = member(20, 'Target')
+        channel, _ = await rooms.register_member(self.bot, self.guild, target)
+        cmd = self.commands['канал']
+        cfg = {'high_staff_role_id': 5}
+        await self.db.set_config(GUILD, high_staff_role_id=5)
+        high = member(30, 'Hai')
+        high.guild = SimpleNamespace(owner_id=0)
+        high.get_role = lambda rid: object() if rid == 5 else None
+        i = self.interaction(high)
+        await cmd(i, target)
+        self.assertIn(channel.mention, i.response.send_message.await_args.args[0])
+        recruit = member(31, 'Recruit')
+        recruit.guild = SimpleNamespace(owner_id=0)
+        recruit.get_role = lambda rid: None
+        i = self.interaction(recruit)
+        await cmd(i, target)
+        self.assertIn('⛔', i.response.send_message.await_args.args[0])
+        self.assertFalse(access.may_find_rooms(recruit, cfg))
+
+    async def test_member_without_room_gets_clear_answer(self):
+        await self.db.set_config(GUILD, high_staff_role_id=5)
+        high = member(30, 'Hai')
+        high.guild = SimpleNamespace(owner_id=0)
+        high.get_role = lambda rid: object() if rid == 5 else None
+        i = self.interaction(high)
+        await self.commands['канал'](i, member(21, 'NoRoom'))
+        self.assertIn('нет личного канала', i.response.send_message.await_args.args[0])
+
+
 if __name__ == '__main__':
     unittest.main()
+
+
+class RoomSearchPanel(Rooms):
+    def hai(self):
+        high = member(30, 'Hai')
+        high.guild = SimpleNamespace(owner_id=0)
+        high.get_role = lambda rid: object() if rid == 5 else None
+        return high
+
+    def interaction(self, user):
+        i = MagicMock(spec=discord.Interaction)
+        i.user = user
+        i.guild_id = GUILD
+        self.guild.get_member = lambda uid: None
+        i.guild = self.guild
+        i.response = SimpleNamespace(send_message=AsyncMock())
+        return i
+
+    async def test_menu_is_persistent_user_select(self):
+        from bot.room_search import RoomSearchView
+
+        view = RoomSearchView(self.bot)
+        self.assertEqual([c.custom_id for c in view.children], ['skif:roomsearch:user'])
+        self.assertIsInstance(view.children[0], discord.ui.UserSelect)
+
+    async def test_high_staff_gets_link_from_menu(self):
+        from bot.room_search import RoomSearchView
+
+        target = member(20, 'Target')
+        channel, _ = await rooms.register_member(self.bot, self.guild, target)
+        await self.db.set_config(GUILD, high_staff_role_id=5)
+        view = RoomSearchView(self.bot)
+        i = self.interaction(self.hai())
+        select = SimpleNamespace(values=[target])
+        await RoomSearchView.pick(view, i, select)
+        self.assertIn(channel.mention, i.response.send_message.await_args.args[0])
+
+    async def test_non_high_staff_denied(self):
+        from bot.room_search import RoomSearchView
+
+        await self.db.set_config(GUILD, high_staff_role_id=5)
+        view = RoomSearchView(self.bot)
+        recruit = member(31, 'Recruit')
+        recruit.guild = SimpleNamespace(owner_id=0)
+        recruit.get_role = lambda rid: None
+        i = self.interaction(recruit)
+        select = SimpleNamespace(values=[member(20, 'Target')])
+        await RoomSearchView.pick(view, i, select)
+        self.assertIn('⛔', i.response.send_message.await_args.args[0])

@@ -182,11 +182,13 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         await provision(bot, guild, {})
         self.assertEqual(len(channels), initial)
         self.assertEqual(guild.create_role.await_count, initial_roles)
-        # 6 provision panels (заявка, отдых, 4 МП) + one profile hub panel; identical hub content is not re-edited.
+        # 6 provision panels (заявка, отдых, 4 МП) + profile hub panel + room search panel; identical content is not re-edited.
         hub = [m for m in messages.values() if m.embeds and m.embeds[0].title == HUB_TITLE]
         self.assertEqual(len(hub), 1)
-        self.assertEqual(len(messages), 7)
-        panels = [m for m in messages.values() if not (m.embeds and m.embeds[0].title == HUB_TITLE)]
+        search = [m for m in messages.values() if m.embeds and m.embeds[0].title == '🔎 Поиск личных каналов']
+        self.assertEqual(len(search), 1)
+        self.assertEqual(len(messages), 8)
+        panels = [m for m in messages.values() if not (m.embeds and m.embeds[0].title in (HUB_TITLE, '🔎 Поиск личных каналов'))]
         self.assertTrue(all(m.edit.await_count == 1 for m in panels))
         cfg = await self.db.get_config(1)
         for key in ('contract', 'promotion', 'green', 'warn'):

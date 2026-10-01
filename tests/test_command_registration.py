@@ -17,6 +17,7 @@ EXPECTED = {
     'profile',
     'activity_top',
     'inactive',
+    'канал',
     'leaderboard',
     'leaderboard_post',
     'vacation_status_post',
