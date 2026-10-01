@@ -236,7 +236,7 @@ class DecisionModal(SafeModal, title="Решение по заявке"):
                 return await i.followup.send("Проверь все пять условий и напиши «подтверждаю».", ephemeral=True)
             if self.accepted and row["kind"] in ("contract", "green", "warn"):
                 evidence = False
-                async for msg in i.channel.history(limit=None):
+                async for msg in i.channel.history(limit=500):
                     if msg.author.id == row["member_id"] and any((a.content_type or "").startswith("image/") for a in msg.attachments):
                         evidence = True
                         break

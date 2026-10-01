@@ -183,6 +183,8 @@ class Database(WriteRepository, ApplicationsRepository, ProgressRepository, Even
             updated_at TEXT NOT NULL,
             UNIQUE(guild_id, source_message_id)
         );
+        CREATE INDEX IF NOT EXISTS idx_progress_member ON progress_requests(guild_id, member_id, kind);
+        CREATE INDEX IF NOT EXISTS idx_signups_member ON event_signups(member_id);
         CREATE INDEX IF NOT EXISTS idx_activity_member ON activity_submissions(guild_id, member_id, status, created_at);
         CREATE INDEX IF NOT EXISTS idx_activity_review ON activity_submissions(guild_id, status, review_message_id);
         """)
@@ -377,21 +379,6 @@ class Database(WriteRepository, ApplicationsRepository, ProgressRepository, Even
         async with self.lock:
             await self.conn.execute(f'UPDATE activity_submissions SET {cols} WHERE id=?', [*data.values(), submission_id])
             await self.conn.commit()
-
-    async def member_activity_stats(self, guild_id, member_id, days=None):
-        where = "guild_id=? AND member_id=? AND status='approved'"
-        params = [guild_id, member_id]
-        if days is not None:
-            where += " AND datetime(created_at)>=datetime('now',?)"
-            params.append(f'-{days} days')
-        rows = await self._all(
-            f'SELECT category,COUNT(*) count,COALESCE(SUM(points),0) points FROM activity_submissions WHERE {where} GROUP BY category', tuple(params)
-        )
-        last = await self._one(
-            "SELECT created_at,category,points FROM activity_submissions WHERE guild_id=? AND member_id=? AND status='approved' ORDER BY created_at DESC LIMIT 1",
-            (guild_id, member_id),
-        )
-        return rows, last
 
     async def activity_top(self, guild_id, days, limit=10):
         return await self._all(

@@ -8,15 +8,6 @@ from .interactions import SafeModal, SafeView, private_thread
 from .ui import base_embed
 
 
-def removable_roles(member, cfg):
-    guild = member.guild
-    recruit = guild.get_role(cfg.get('recruiter_role_id') or 0)
-    if not recruit:
-        raise ValueError('Не настроена роль Рекрут.')
-    protected = {cfg.get(k) for k in HIGH_KEYS + ('accepted_role_id', 'vacation_role_id')}
-    return [r for r in member.roles if not r.is_default() and not r.managed and r.id not in protected and r <= recruit]
-
-
 from .services.leave import begin_leave, restore_leave
 
 
