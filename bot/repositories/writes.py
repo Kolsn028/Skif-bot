@@ -15,12 +15,6 @@ class WriteRepository:
                 await self.conn.rollback()
                 raise
 
-    async def record_staff_response(self, application_id, updated_at):
-        await self._write(
-            "UPDATE applications SET updated_at=? WHERE id=? AND status IN ('pending','interview')",
-            (updated_at, application_id),
-        )
-
     async def record_audit(self, guild_id, actor_id, action, target_id, details):
         await self._write(
             'INSERT INTO audit_actions(guild_id,actor_id,action,target_id,details,created_at) VALUES (?,?,?,?,?,?)',
