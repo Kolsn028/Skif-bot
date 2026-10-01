@@ -301,6 +301,9 @@ async def provision(bot, guild, selected):
         from .hub import install as install_hub
 
         await install_hub(bot, guild)
+        from .room_search import install as install_room_search
+
+        await install_room_search(bot, guild)
         from .hub import find_hub
 
         hub = await find_hub(bot, guild)

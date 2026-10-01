@@ -64,6 +64,11 @@ def may_manage_events(member, cfg):
     return may_manage_recruiters(member, cfg)
 
 
+def may_find_rooms(member, cfg):
+    """Поиск личного канала участника: Хай, Дэп Овнер и Овнер."""
+    return may_manage_recruiters(member, cfg)
+
+
 def may_view_profiles(member, cfg):
     return may_manage_recruiters(member, cfg)
 

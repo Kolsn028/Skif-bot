@@ -130,6 +130,28 @@ def _register_activity_commands(bot):
             ephemeral=True,
         )
 
+    @bot.tree.command(name='канал', description='Найти личный канал участника')
+    @app_commands.rename(member='участник')
+    @app_commands.describe(member='Начни вводить ник или выбери участника')
+    async def find_channel(i: discord.Interaction, member: discord.Member):
+        from .access import may_find_rooms
+        from .rooms import locate_room
+
+        if not isinstance(i.user, discord.Member) or not may_find_rooms(i.user, await bot.db.get_config(i.guild_id)):
+            return await i.response.send_message('⛔ Только Хай, Дэп Овнер и Овнер.', ephemeral=True)
+        channel = await locate_room(bot, i.guild, member)
+        if not channel:
+            return await i.response.send_message(
+                f'У {member.mention} нет личного канала: он не зарегистрирован в хабе.',
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        link = discord.ui.View()
+        link.add_item(discord.ui.Button(label='Открыть канал', style=discord.ButtonStyle.link, url=channel.jump_url))
+        await i.response.send_message(
+            f'Личный канал {member.mention}: {channel.mention}', ephemeral=True, view=link, allowed_mentions=discord.AllowedMentions.none()
+        )
+
     @bot.tree.command(name='leaderboard', description='Лидерборд рекрутеров')
     @app_commands.choices(
         period=[

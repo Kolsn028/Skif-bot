@@ -27,6 +27,12 @@ ROOM_THREADS = (
 )
 
 
+def channel_link(channel):
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label='Открыть канал', style=discord.ButtonStyle.link, url=channel.jump_url))
+    return view
+
+
 def room_topic(bot, guild, member):
     return f'skif:room:{bot.user.id}:{guild.id}:{member.id}'
 

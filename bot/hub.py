@@ -316,7 +316,7 @@ class ProfileHubView(SafeView):
         await i.response.defer(ephemeral=True, thinking=True)
         channel, created = await rooms.register_member(self.bot, i.guild, i.user)
         text = f'Готово! Твой личный канал: {channel.mention}' if created else f'Ты уже зарегистрирован: {channel.mention}'
-        await i.followup.send(text, ephemeral=True, view=channel_link(channel), allowed_mentions=NO_MENTIONS)
+        await i.followup.send(text, ephemeral=True, view=rooms.channel_link(channel), allowed_mentions=NO_MENTIONS)
 
     @discord.ui.button(label='Мой канал', emoji='🗂️', style=discord.ButtonStyle.secondary, custom_id='skif:hub:channel')
     async def my_channel(self, i, _):
@@ -326,14 +326,8 @@ class ProfileHubView(SafeView):
         if not channel:
             return await i.response.send_message('Личного канала ещё нет. Нажми «Зарегистрироваться».', ephemeral=True)
         await i.response.send_message(
-            f'Твой личный канал: {channel.mention}', ephemeral=True, view=channel_link(channel), allowed_mentions=NO_MENTIONS
+            f'Твой личный канал: {channel.mention}', ephemeral=True, view=rooms.channel_link(channel), allowed_mentions=NO_MENTIONS
         )
-
-
-def channel_link(channel):
-    view = discord.ui.View()
-    view.add_item(discord.ui.Button(label='Открыть канал', style=discord.ButtonStyle.link, url=channel.jump_url))
-    return view
 
 
 class LegacyHubView(SafeView):
