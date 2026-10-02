@@ -1,4 +1,4 @@
-"""Private contract and promotion workflows. Evidence is checked by staff."""
+"""Приватные заявки на контракты и повышения. Доказательства проверяет руководство."""
 
 import discord
 from .theme import DANGER, SUCCESS, WARNING
@@ -58,7 +58,7 @@ async def submit(bot, i, kind, details):
     await i.response.defer(ephemeral=True, thinking=True)
     async with bot.operation_locks[("progress_open", i.guild_id, i.user.id)]:
         cfg = await bot.db.get_config(i.guild_id)
-        # Try profile hub first, fall back to legacy channel
+        # Сначала канал «профиль», иначе старый канал
         from .hub import find_hub
 
         parent = await find_hub(bot, i.guild)
@@ -250,7 +250,7 @@ class DecisionModal(SafeModal, title="Решение по заявке"):
             if self.accepted and row["kind"] == "promotion":
                 await award_main(self.bot, i.guild, member)
             status = "approved" if self.accepted else "rejected"
-            # Publish first; if Discord is unavailable keep the request actionable.
+            # Сначала публикуем: если Discord недоступен, заявка остаётся актуальной.
             await i.channel.send(
                 embed=base_embed(
                     "✅ Подтверждено" if self.accepted else "❌ Отклонено",

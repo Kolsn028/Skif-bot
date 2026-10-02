@@ -1,7 +1,7 @@
-"""Compatibility imports for existing commands and persistent view registration.
+"""Совместимые импорты для команд и регистрации постоянных view.
 
-Edit handlers in bot/forms/<feature>.py. Keep these names available for callers
-that still import bot.views; no Discord custom_id changes are needed.
+Хендлеры правим в bot/forms/<раздел>.py. Эти имена оставлены для кода, который всё
+ещё импортирует bot.views; custom_id менять не нужно.
 """
 
 from .forms.activities import (

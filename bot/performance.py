@@ -1,4 +1,4 @@
-"""Combine refresh bursts and skip semantically identical panel edits."""
+"""Объединяет всплески обновлений и пропускает правки панелей, если содержимое не изменилось."""
 
 import asyncio
 import functools
@@ -7,7 +7,7 @@ import functools
 def embed_content(embed):
     value = embed.to_dict()
     value.pop('timestamp', None)
-    # Discord adds transport metadata to images on received embeds.
+    # Discord добавляет служебные метаданные к картинкам в полученных embed.
     for key in ('image', 'thumbnail', 'author', 'footer'):
         if key in value:
             value[key] = {k: v for k, v in value[key].items() if k not in ('proxy_url', 'proxy_icon_url', 'width', 'height')}

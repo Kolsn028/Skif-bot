@@ -1,4 +1,4 @@
-"""Family event signups with staff-only creation and verified attendance."""
+"""Запись на события семьи: создают только руководители, явка подтверждается."""
 
 from datetime import datetime, timedelta, timezone
 

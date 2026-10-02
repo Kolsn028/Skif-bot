@@ -1,4 +1,4 @@
-"""SQL operations for applications; callers use named methods."""
+"""SQL по анкетам; вызывающий код использует именованные методы."""
 
 
 class ApplicationsRepository:

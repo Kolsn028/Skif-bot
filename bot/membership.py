@@ -1,4 +1,4 @@
-"""Separate guest onboarding from family membership and application access."""
+"""Отдельно гостевой вход, членство в семье и доступ к заявкам."""
 
 import discord
 
@@ -16,7 +16,7 @@ def membership_roles(guild, cfg):
 
 async def accept_member(member, cfg, reason):
     guest, family, test = membership_roles(member.guild, cfg)
-    # Grant access first; failed Гость removal leaves the application retryable.
+    # Сначала даём доступ: если снять Гость не вышло, заявку можно повторить.
     await member.add_roles(family, test, reason=reason)
     if member.get_role(guest.id):
         await member.remove_roles(guest, reason=reason)
@@ -30,7 +30,7 @@ async def repair_members(bot, guild, roles):
     for member in guild.members:
         if member.bot or not any(member.get_role(r.id) for r in (test, main, family)):
             continue
-        # An approved leave intentionally removes family roles until restoration.
+        # Одобренный отпуск снимает семейные роли до возвращения — так задумано.
         if member.get_role(roles['vacation_role_id'].id) or await bot.db.pending_vacation_for_member(guild.id, member.id):
             continue
         changed = False
@@ -45,8 +45,8 @@ async def repair_members(bot, guild, roles):
 
 
 async def secure_application_parent(parent):
-    # Manage Threads bypasses private-thread membership. Deny it in this parent,
-    # including role-specific allows; Discord Administrator remains a bypass.
+    # Manage Threads обходит членство в приватных ветках. Запрещаем его в этом
+    # родителе, в том числе разрешения конкретных ролей; администратор Discord остаётся обходом.
     ow = dict(parent.overwrites)
     for target in [parent.guild.default_role, *ow]:
         if target.id == parent.guild.me.id:

@@ -15,7 +15,7 @@ from .repositories.writes import WriteRepository
 
 
 class _TaskLocalLock:
-    """Re-entrant lock for a single asyncio task."""
+    """Реентерабельная блокировка в рамках одной asyncio-задачи."""
 
     def __init__(self):
         self._lock = asyncio.Lock()
@@ -416,7 +416,7 @@ class Database(WriteRepository, ApplicationsRepository, ProgressRepository, Even
             await self.conn.commit()
 
     async def reserve_interview(self, app_id, guild_id, available_ids, now, until):
-        # Atomic allocation across all applications; empty channels can already be reserved.
+        # Атомарное выделение по всем заявкам; пустые каналы уже могут быть зарезервированы.
         async with self.lock:
             app = await self._one("SELECT * FROM applications WHERE id=? AND guild_id=? AND status IN ('pending','interview')", (app_id, guild_id))
             if not app or not app['assigned_to']:

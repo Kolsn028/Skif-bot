@@ -18,7 +18,7 @@ from .roles import is_family, may_recruit, may_review_reports, may_promote, may_
 
 
 class _OperationLocks:
-    """Bounded registry of per-operation asyncio locks (LRU eviction)."""
+    """Реестр блокировок по операциям; старые вытесняются (LRU)."""
 
     def __init__(self, max_entries: int):
         self._max_entries = max_entries
@@ -371,7 +371,7 @@ class SkifBot(commands.Bot):
         return m
 
     async def expire_vacations(self, guild):
-        # The date is informational: only an approved return restores roles.
+        # Дата только для информации: роли возвращает лишь одобренное возвращение.
         await self.update_vacation_status(guild)
 
     @tasks.loop(hours=1)

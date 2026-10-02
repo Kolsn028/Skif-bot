@@ -1,1 +1,1 @@
-"""Discord forms grouped by feature; persistent IDs remain stable."""
+"""Формы Discord по разделам; постоянные custom_id не меняются."""

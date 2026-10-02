@@ -1,4 +1,4 @@
-"""Single-statement writes with rollback; transactions spanning statements stay explicit."""
+"""Одиночные записи с откатом; транзакции из нескольких запросов оформляются явно."""
 
 import json
 from datetime import datetime, timezone

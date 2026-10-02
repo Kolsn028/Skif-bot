@@ -1,4 +1,4 @@
-"""Resumable vacation role transitions; no UI or notification calls."""
+"""Смена ролей при отпуске с возможностью продолжить; без интерфейса и уведомлений."""
 
 import json
 
@@ -12,8 +12,8 @@ async def begin_leave(bot, guild, vac):
         leave = guild.get_role(cfg.get('vacation_role_id') or 0)
         if not leave or leave.managed or leave.is_default() or leave >= guild.me.top_role:
             raise ValueError('Проверь роль Отдых и подними роль бота выше неё.')
-        # Persist the exact leave role before Discord writes, so retries and a
-        # later /setup change cannot remove a different role on return.
+        # Роль отпуска сохраняем до записи в Discord: повторы и последующая смена
+        # /setup не должны снять при возвращении другую роль.
         marker = {'mode': 'role_only', 'leave_role_id': leave.id}
         await bot.db.update_vacation(vac['id'], role_snapshot=json.dumps(marker), added_novice=0, status='applying', updated_at=bot.now_iso())
         vac = await bot.db.get_vacation(vac['id'])
@@ -22,8 +22,8 @@ async def begin_leave(bot, guild, vac):
     leave = guild.get_role(role_id or 0)
     if not leave or leave.managed or leave.is_default() or leave >= guild.me.top_role:
         raise ValueError('Проверь роль Отдых и подними роль бота выше неё.')
-    # Legacy snapshots are retained for eventual restoration; never remove
-    # additional roles, even when retrying an old partially approved leave.
+    # Старые снимки сохраняются для возможного восстановления; лишние роли
+    # не снимаем, даже при повторе частично одобренного отпуска.
     await member.add_roles(leave, reason='Skif: одобрен отдых')
     await bot.db.update_vacation(vac['id'], status='approved', updated_at=bot.now_iso())
 

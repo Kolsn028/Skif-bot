@@ -1,4 +1,4 @@
-"""Resumable leave transitions. Persist snapshots before touching Discord roles."""
+"""Отпуск, который можно продолжить после сбоя. Снимок ролей сохраняется до того, как трогаем роли в Discord."""
 
 import json
 import discord

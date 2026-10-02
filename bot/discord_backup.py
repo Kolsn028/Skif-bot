@@ -1,4 +1,4 @@
-"""Per-guild Discord snapshots. Only bot-authored, checksummed JSON is restored."""
+"""Снимки данных по серверам в Discord. Восстанавливается только JSON, который написал сам бот и у которого сходится контрольная сумма."""
 
 import asyncio
 import gzip
@@ -93,7 +93,7 @@ def decode(blob, checksum, guild_id):
 async def restore_payload(db, payload):
     gid = payload['guild_id']
     async with db.lock:
-        # Never replace existing local records with an older Discord snapshot.
+        # Локальные записи никогда не заменяем более старым снимком из Discord.
         if await db._one('SELECT guild_id FROM guild_config WHERE guild_id=?', (gid,)):
             return False
         await db.conn.execute('BEGIN IMMEDIATE')
@@ -195,7 +195,7 @@ class DiscordBackups:
     async def restore(self):
         expected = json.loads(os.getenv('DISCORD_BACKUP_CHANNEL_IDS', '{}'))
         seen = set()
-        # REST is available in setup_hook, before Gateway events and UI handlers.
+        # REST доступен уже в setup_hook, до событий Gateway и обработчиков UI.
         async for guild in self.bot.fetch_guilds(limit=None):
             seen.add(str(guild.id))
             if await self.bot.db._one('SELECT guild_id FROM guild_config WHERE guild_id=?', (guild.id,)):
@@ -212,8 +212,8 @@ class DiscordBackups:
             async for msg in matches[0].history(limit=50):
                 if msg.author.id != self.bot.user.id or len(msg.attachments) != 1:
                     continue
-                # New backups keep the checksum in the attachment filename; old
-                # messages used the content line and remain restorable.
+                # Новые бэкапы хранят контрольную сумму в имени вложения; в старых
+                # сообщениях она в строке контента, их по-прежнему можно восстановить.
                 checksum = _checksum_from_filename(msg.attachments[0].filename)
                 if checksum is None:
                     parts = msg.content.split()
@@ -226,7 +226,7 @@ class DiscordBackups:
                     payload = decode(await msg.attachments[0].read(), checksum, guild.id)
                 except (ValueError, OSError, EOFError, KeyError, TypeError):
                     continue
-                # Database conflicts stop startup rather than silently dropping data.
+                # Конфликт в БД останавливает запуск, а не теряет данные молча.
                 await restore_payload(self.bot.db, payload)
                 self.last[guild.id] = payload
                 self.hashes[guild.id] = checksum
@@ -311,8 +311,8 @@ class DiscordBackups:
             if not message.attachments or hashlib.sha256(await message.attachments[0].read()).hexdigest() != checksum:
                 raise RuntimeError('Не удалось подтвердить сохранённую копию.')
             lines = change_lines(self.last.get(guild.id), payload)
-            # Commit the verified backup before logging: a failed log must not
-            # cause another identical snapshot upload on the next attempt.
+            # Сначала фиксируем проверенный бэкап, потом пишем лог: сбой лога не должен
+            # вызывать повторную загрузку такого же снимка при следующей попытке.
             self.pending_logs.setdefault(guild.id, []).extend(lines)
             self.last[guild.id] = payload
             self.hashes[guild.id] = checksum
@@ -327,7 +327,7 @@ class DiscordBackups:
             except asyncio.TimeoutError:
                 pass
             self.wake.clear()
-            await asyncio.sleep(3)  # combine commits from one interaction
+            await asyncio.sleep(3)  # объединяем коммиты одного взаимодействия
             for guild in self.bot.guilds:
                 cfg = await self.bot.db.get_config(guild.id)
                 if not cfg.get('management_category_id'):
@@ -337,7 +337,7 @@ class DiscordBackups:
                 except Exception as exc:
                     self.errors[guild.id] = str(exc)
                     log.error('Discord backup failed | guild=%s: %s', guild.id, exc, exc_info=True)
-            # Failed writes retry on the periodic wake, never a tight loop.
+            # Неудачные записи повторяются по периодическому таймеру, а не в плотном цикле.
 
     async def close(self):
         if self.task:

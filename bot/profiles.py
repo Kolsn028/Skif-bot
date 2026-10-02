@@ -1,4 +1,4 @@
-"""Read-through player cards: visits, reports and contracts keep their source IDs."""
+"""Карточки игроков читаются из исходных данных: визиты, отчёты и контракты сохраняют свои ID."""
 
 import math
 from datetime import datetime, timezone, timedelta
@@ -286,7 +286,7 @@ async def refresh_member(bot, guild, member_id, create=True):
         return
     async with bot.operation_locks[('profile_card', guild.id, member_id)]:
         try:
-            # Replace old public profile embeds, including duplicate panels from before backups.
+            # Заменяем старые публичные embed профиля, в том числе дубли панелей до бэкапов.
             async for old in ch.history(limit=100):
                 if old.author.id != bot.user.id:
                     continue
@@ -299,7 +299,7 @@ async def refresh_member(bot, guild, member_id, create=True):
                         allowed_mentions=discord.AllowedMentions.none(),
                     )
             e = base_embed('📁 Личное дело', 'Отправляй сюда отчёты и доказательства. Подробная карточка и история доступны Хай и выше.')
-            # Permanent card has the latest five entries; filters open privately per viewer.
+            # В постоянной карточке последние пять записей; фильтры открываются приватно у каждого.
             msg = None
             if case.get('profile_message_id'):
                 try:

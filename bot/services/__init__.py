@@ -1,1 +1,1 @@
-"""Use cases independent of Discord buttons, modals and message formatting."""
+"""Сценарии, не зависящие от кнопок, модалок и оформления сообщений."""

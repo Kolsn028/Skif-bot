@@ -1,4 +1,4 @@
-"""Tier applications: explicit roles, private review and resumable role changes."""
+"""Заявки на тиры: явные роли, приватная проверка и смена ролей с возможностью продолжить."""
 
 import json
 import asyncio
@@ -30,7 +30,7 @@ def panel(tier):
 
 
 def tier_channel(bot, guild, tier):
-    """Find tier channel by topic. Returns None if missing or ambiguous."""
+    """Канал тира по topic. None, если канала нет или найдено несколько."""
     topic = f"skif:tier:{tier}:{bot.user.id}:{guild.id}"
     matches = [c for c in guild.channels if isinstance(c, discord.TextChannel) and c.topic == topic]
     if len(matches) != 1:
@@ -111,7 +111,7 @@ class TierModal(SafeModal):
                 await self.bot.db.fail_progress(rid)
                 raise
             await i.followup.send(f"Заявка отправлена: {thread.mention}", ephemeral=True)
-            # Notify in the parent channel; application details stay in the private thread.
+            # Уведомление в родительском канале; детали заявки остаются в приватной ветке.
             await channel.send(
                 f"<@&{tiercheck_id}> · Новая заявка на **тир {self.tier}**: {thread.mention}",
                 allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=[discord.Object(id=tiercheck_id)], replied_user=False),

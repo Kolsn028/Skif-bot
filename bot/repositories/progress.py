@@ -1,4 +1,4 @@
-"""SQL operations for progress; callers use named methods."""
+"""SQL по заявкам на контракты и повышения; вызывающий код использует именованные методы."""
 
 
 class ProgressRepository:

@@ -1,4 +1,4 @@
-"""SQL operations for events; callers use named methods."""
+"""SQL по событиям; вызывающий код использует именованные методы."""
 
 
 class EventsRepository:

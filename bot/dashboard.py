@@ -1,4 +1,4 @@
-"""Private management and self-service request status, with permission checks on every click."""
+"""Панель управления и статус своих заявок; права проверяются при каждом клике."""
 
 import discord
 from .performance import edit_if_changed

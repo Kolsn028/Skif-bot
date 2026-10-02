@@ -1,4 +1,4 @@
-"""SQL operations for profiles; callers use named methods."""
+"""SQL по профилям; вызывающий код использует именованные методы."""
 
 
 class ProfilesRepository:
@@ -48,7 +48,7 @@ class ProfilesRepository:
         )
 
     async def request_rows(self, gid, member_id=None, pending=False, kind='all', page=0):
-        # Owner filtering lives in every branch, never only in the UI.
+        # Фильтр по владельцу — в каждой ветке, а не только в интерфейсе.
         parts = []
         args = []
         specs = [

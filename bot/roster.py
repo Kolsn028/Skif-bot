@@ -1,4 +1,4 @@
-"""All roster mutations use the database lock; counters never exceed seat limits."""
+"""Все изменения состава идут под блокировкой БД, счётчики не выходят за лимиты мест."""
 
 import json
 from datetime import datetime, timezone

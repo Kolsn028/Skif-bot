@@ -1,4 +1,4 @@
-"""Additive migration: keeps source records and old attendance confirmations intact."""
+"""Аддитивная миграция: исходные записи и старые подтверждения явки сохраняются."""
 
 
 async def migrate(conn):

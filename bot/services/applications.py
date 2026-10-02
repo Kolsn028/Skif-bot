@@ -1,8 +1,8 @@
-"""Application decisions: authorization, role changes, then one atomic result.
+"""Решения по анкетам: проверка прав, смена ролей, затем одна атомарная запись результата.
 
-UI callbacks may hold their existing recruiter_decision lock. This service uses
-its own lock so callers outside a view also serialize approval/rejection safely.
-It never sends messages; a failed notification cannot undo a recorded decision.
+Callbacks интерфейса могут держать свою блокировку recruiter_decision, а сервис берёт
+собственную, чтобы одобрение и отказ шли по очереди и вне view. Сообщений он не
+отправляет: сбой уведомления не отменяет уже записанное решение.
 """
 
 import discord
@@ -12,7 +12,7 @@ from ..membership import accept_member
 
 
 class ApplicationDecisionError(ValueError):
-    """A request cannot be decided; safe to show this message to staff."""
+    """Решение принять нельзя; текст безопасно показать руководству."""
 
 
 async def decide(bot, guild, actor, thread_id, *, accepted, reason=None, expected_id=None):

@@ -1,4 +1,4 @@
-"""Rejection reasons, recruiter board, two-hour reminders and interface refresh."""
+"""Причины отказа, доска рекрутов, напоминание через два часа и обновление интерфейса."""
 
 import logging
 from datetime import datetime, timezone, timedelta
@@ -113,7 +113,7 @@ async def remind_applications(bot, guild):
                     continue
                 if app.get('assigned_to'):
                     member = guild.get_member(app['assigned_to'])
-                    # Never ping senior roles, even when they personally claimed an application.
+                    # Старших ролей не пингуем, даже если они сами взяли заявку.
                     people = [member] if member and not member.bot and not is_leader(member, cfg) and not has_role(member, cfg, HIGH_KEYS) else []
                 else:
                     people = application_recruiters(guild, cfg)
@@ -133,7 +133,7 @@ async def remind_applications(bot, guild):
 
 
 async def refresh_interface(bot, guild):
-    """Update existing bot panels/cards without running setup or modifying role grants."""
+    """Обновляет панели и карточки бота без /setup и без изменения выданных ролей."""
     from .events import EVENTS, event_panel, EventPanelView, EventView, card
     from .ui import vacation_panel_embed
 

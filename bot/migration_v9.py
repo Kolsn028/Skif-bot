@@ -1,4 +1,4 @@
-"""Upgrade existing Discord UI using preserved DB records; no guessing lost data."""
+"""Перенос существующего интерфейса Discord по сохранённым записям БД; потерянные данные не угадываем."""
 
 import discord
 from .events import EventView, card
@@ -6,7 +6,7 @@ from .profiles import refresh_member
 
 
 async def migrate_guild(bot, guild):
-    # Recover case-channel mapping from stable topics, keeping all original messages.
+    # Восстанавливаем связь «дело — канал» по стабильным topic, все исходные сообщения сохраняем.
     for ch in guild.text_channels:
         topic = ch.topic or ''
         if topic.startswith('Личное дело • owner='):
@@ -29,7 +29,7 @@ async def migrate_guild(bot, guild):
             await msg.edit(embed=await card(bot.db, row), view=view, allowed_mentions=discord.AllowedMentions.none())
         except discord.NotFound:
             print(f'Old event message missing: {row["id"]}; database retained')
-    # Missing legacy role snapshots cannot be reconstructed from current roles.
+    # Потерянные старые снимки ролей по текущим ролям не восстановить.
     ids = {r['member_id'] for r in await bot.db._all('SELECT member_id FROM personal_cases WHERE guild_id=?', (guild.id,))}
     ids.update(
         r['member_id']

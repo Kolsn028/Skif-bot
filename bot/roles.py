@@ -1,4 +1,4 @@
-"""Explicit Skif ranks; role position alone never grants bot permissions."""
+"""Явные ранги Skif; одна позиция роли сама по себе прав боту не даёт."""
 
 import discord
 
@@ -20,7 +20,7 @@ ROLE_SPECS = {
     'guest_role_id': ('Гость', 0x777777),
     'vacation_role_id': ('Отдых', 0x5BAE96),
 }
-# Compatibility exports: existing modules can continue importing bot.roles.
+# Реэкспорт для совместимости: старые модули могут и дальше импортировать bot.roles.
 from .access import (
     STAFF_KEYS,
     HIGH_KEYS,
@@ -57,7 +57,7 @@ def tier_role_ids():
 
 
 def configured_tier_roles(guild):
-    """Resolve tier roles from env IDs; fall back to exact existing role names."""
+    """Роли тиров по ID из окружения, иначе по точному названию существующей роли."""
     import os
 
     ids = tier_role_ids()

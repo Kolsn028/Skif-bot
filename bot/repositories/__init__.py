@@ -1,1 +1,1 @@
-"""Named database operations; UI modules must not assemble SQL."""
+"""Именованные операции с БД; интерфейс не должен собирать SQL сам."""

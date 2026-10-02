@@ -1,4 +1,4 @@
-"""Repeatable server setup. Existing configured channels are never deleted."""
+"""Повторяемая настройка сервера. Уже настроенные каналы не удаляются."""
 
 import discord
 from .ui import base_embed, application_panel_embed, vacation_panel_embed
@@ -31,9 +31,9 @@ async def provision(bot, guild, selected):
         candidates = {}
         for key, (_name, _color) in ROLE_SPECS.items():
             saved = guild.get_role(cfg.get(key) or 0)
-            # Retain explicit choices after migration, otherwise resolve the requested hierarchy.
+            # Явный выбор после миграции сохраняем, иначе берём запрошенную иерархию.
             if cfg.get('role_schema_version', 0) != 3 and key == 'family_role_id':
-                saved = None  # Old field may point at Гость; never treat it as family.
+                saved = None  # Старое поле могло указывать на Гость — семьёй его не считаем.
             role = selected.get(key) or (saved if cfg.get('role_schema_version') == 3 else None) or named_role(guild, key) or saved
             if role and (role.is_default() or role.managed):
                 raise ValueError('Выбери обычные роли сервера, не @everyone и не роли интеграций.')
@@ -57,7 +57,7 @@ async def provision(bot, guild, selected):
             roles[key] = role
             await bot.db.set_config(guild.id, **{key: role.id})
         await bot.db.set_config(guild.id, role_schema_version=3)
-        # Tier roles: attach existing roles by ID/name, otherwise create them.
+        # Роли тиров: подключаем существующие по ID/названию, иначе создаём.
         tier_roles = {}
         resolved_tiers = configured_tier_roles(guild)
         tier_names = {'tiercheck': ('tiercheck', 0xFFD700), 1: ('Тир 1', 0xC0C0C0), 2: ('Тир 2', 0xFFD700), 3: ('Тир 3', 0xFF69B4)}
@@ -74,7 +74,7 @@ async def provision(bot, guild, selected):
         for n in (1, 2, 3):
             tier_cfg[f'tier_{n}_role_id'] = tier_roles[n].id
         await bot.db.set_config(guild.id, **tier_cfg)
-        # Higher staff roles may be above the bot; still order all editable ranks.
+        # Старшие роли могут стоять выше бота; все редактируемые ранги всё равно упорядочиваем.
         ranked = [roles[k] for k in ROLE_SPECS if k != 'vacation_role_id' and roles[k] < me.top_role]
         if ranked:
             positions = sorted([r.position for r in ranked], reverse=True)
@@ -192,7 +192,7 @@ async def provision(bot, guild, selected):
                 if app:
                     await sync_application_members(bot, thread, app)
         await channel('interview_channel_id', '📞・вызов-на-обзвон', 'recruitment_category_id', [guild.default_role])
-        # Keep the original first channel; add two more without duplicating it on repeated setup.
+        # Первый канал оставляем, добавляем ещё два; при повторном setup не дублируем.
         await channel('interview_voice_channel_id', 'Обзвон 1 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
         await channel('interview_voice_2_id', 'Обзвон 2 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
         await channel('interview_voice_3_id', 'Обзвон 3 • Skif', 'recruitment_category_id', [guild.default_role], voice=True)
@@ -260,7 +260,7 @@ async def provision(bot, guild, selected):
 
         repaired = await repair_members(bot, guild, roles)
         print(f'Membership repaired | guild={guild.id} | members={repaired}')
-        # Skif is the next family rank, with exactly Academy's permissions.
+        # Skif — следующий ранг семьи, права ровно как у Academy.
         fresh_roles = {r.id: r for r in await guild.fetch_roles()}
         novice = fresh_roles.get(roles['accepted_role_id'].id, roles['accepted_role_id'])
         main = fresh_roles.get(roles['main_role_id'].id, roles['main_role_id'])
@@ -297,7 +297,7 @@ async def provision(bot, guild, selected):
 
         await migrate_guild(bot, guild)
         await bot.db.set_config(guild.id, server_layout_version=10)
-        # Install profile hub after tiers
+        # Ставим канал «профиль» после тиров
         from .hub import install as install_hub
 
         await install_hub(bot, guild)

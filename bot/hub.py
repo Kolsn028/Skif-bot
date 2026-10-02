@@ -32,7 +32,7 @@ def hub_topic(bot, guild):
 
 
 async def find_hub(bot, guild):
-    """Find profile hub channel by topic."""
+    """Канал «профиль» по topic."""
     topic = hub_topic(bot, guild)
     for channel in guild.channels:
         if isinstance(channel, discord.TextChannel) and channel.topic == topic:
@@ -150,7 +150,7 @@ async def history_embed(bot, guild, member):
 
 
 class TierChoiceView(SafeView):
-    """Ephemeral view for tier selection."""
+    """Временное меню выбора тира, видит только нажавший."""
 
     def __init__(self, bot):
         super().__init__(timeout=120)
@@ -381,7 +381,7 @@ def hub_embed(bot):
 
 
 async def install(bot, guild):
-    """Create or update profile hub channel and panel."""
+    """Создаёт или обновляет канал «профиль» и его панель."""
     cfg = await bot.db.get_config(guild.id)
     category = guild.get_channel(cfg.get('family_category_id') or 0)
     if not isinstance(category, discord.CategoryChannel):

@@ -1,4 +1,4 @@
-"""Permission policy only; no Discord messages, SQL or role mutations."""
+"""Только политика прав: никаких сообщений в Discord, SQL и выдачи ролей."""
 
 import os
 
@@ -47,8 +47,8 @@ def is_family(member, cfg):
     return is_leader(member, cfg) or has_role(member, cfg, STAFF_KEYS + ('accepted_role_id', 'main_role_id', 'family_role_id'))
 
 
-# Tier review deliberately has no owner/admin/senior-role bypass.
-# Tiers work on the configured guild; the reviewer role is attached by setup.
+# У проверки тиров нет обхода для владельца, админа и старших ролей.
+# Тиры работают на настроенном сервере; роль проверяющего выдаёт setup.
 TIER_GUILD_ID = env_id('TIER_GUILD_ID') or env_id('GUILD_ID')
 TIERCHECK_ROLE_ID = env_id('TIERCHECK_ROLE_ID')
 
@@ -82,7 +82,7 @@ def may_confirm_attendance(member, cfg, event):
 
 
 def may_use_legacy_admin(member, cfg):
-    # Preserve existing command/assignment override; do not silently expand Хай.
+    # Сохраняем существующее переопределение команды/назначения; Хай молча не расширяем.
     return is_leader(member, cfg) or has_role(member, cfg, ('dep_leader_role_id',)) or member.guild_permissions.administrator
 
 
@@ -95,7 +95,7 @@ def may_decide_application(member, cfg, application):
 
 
 def may_setup(member, cfg, resolve_role):
-    """Only the configured Овнер role; owner/Administrator are not bypasses."""
+    """Только настроенная роль Овнер. Владелец сервера и администратор обходом не считаются."""
     leader_id = cfg.get('leader_role_id')
     if leader_id:
         return bool(member.get_role(leader_id))

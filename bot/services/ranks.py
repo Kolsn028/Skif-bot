@@ -1,4 +1,4 @@
-"""Role changes for Main and tiers, independent of review forms."""
+"""Смена ролей Main и тиров, не зависит от форм проверки."""
 
 from ..access import TIER_GUILD_ID as GUILD_ID
 from ..access import env_id
@@ -12,7 +12,7 @@ async def award_main(bot, guild, member):
     novice = guild.get_role(cfg.get('accepted_role_id') or 0)
     if not main or not novice or main.managed or main >= guild.me.top_role or novice >= guild.me.top_role:
         raise ValueError('Проверь /setup и подними роль бота выше Skif и Academy. Повышение пока не подтверждено.')
-    # Add first so a failed removal never leaves the member without family access.
+    # Сначала добавляем: если снятие не вышло, участник не остаётся без доступа к семье.
     await member.add_roles(main, reason='Skif: одобрено повышение до 3 ранга')
     if member.get_role(novice.id):
         await member.remove_roles(novice, reason='Skif: Academy заменена на Skif')

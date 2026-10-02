@@ -62,7 +62,7 @@ def serialized(kind, by_user=False):
 
 
 async def private_thread(parent, member, roles, name, *, reviewers=None):
-    """No public anchor: application text stays inside the private thread."""
+    """Без публичного якоря: текст заявки остаётся внутри приватной ветки."""
     perms = parent.permissions_for(parent.guild.me)
     required = (
         'view_channel',
@@ -97,7 +97,7 @@ async def private_thread(parent, member, roles, name, *, reviewers=None):
             if reviewer.id != member.id:
                 await thread.add_user(reviewer)
     except Exception:
-        # Only remove the empty thread from this failed attempt.
+        # Удаляем только пустую ветку от этой неудачной попытки.
         await thread.delete(reason='Skif: не удалось добавить участников')
         raise
     return thread
